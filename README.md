@@ -1,19 +1,147 @@
-# 작성중
+# Edu Agentic RAG
 
-# Agentic RAG 강의 자료
+Agentic RAG(Retrieval-Augmented Generation)에 대한 이론과 실습을 통합한 교육용 프로젝트입니다.
 
-이 저장소는 Agentic RAG(Retrieval-Augmented Generation)에 대한 강의 자료를 포함하고 있습니다. AI 에이전트의 개념부터 RAG 시스템의 작동 원리, 그리고 이 둘을 결합한 Agentic RAG 및 Multi-Agent 시스템에 대한 이론적 내용을 다룹니다.
+## 📚 프로젝트 개요
 
-## 목차
+이 프로젝트는 AI 에이전트의 개념부터 RAG 시스템의 작동 원리, 그리고 이 둘을 결합한 Agentic RAG 및 Multi-Agent 시스템에 대한 이론적 내용과 실습 코드를 제공합니다.
 
--   **theory/**: 강의 이론 자료 (Markdown 파일)
-    -   `lecture_outline.md`: 전체 강의 구성안
-    -   `Agentic_RAG_Basic.md`: 1장 'RAG & Agent 기초 이해' 상세 내용
+### 학습 목표
 
-## 실습 코드
+- RAG(Retrieval-Augmented Generation)의 기본 개념 이해
+- AI Agent의 작동 원리와 구조 학습
+- Agentic RAG 시스템 설계 및 구현
+- Multi-Agent 시스템 구축 방법 습득
 
-강의에서 다루는 개념들을 직접 구현해 볼 수 있는 실습 코드도 이 저장소에 추가될 예정입니다. 각 챕터별 또는 주제별로 관련 코드가 제공될 것입니다.
+## 📁 프로젝트 구조
 
-## 기여
+```
+edu-agentic-rag/
+├── README.md              # 프로젝트 전체 소개 및 실행 가이드
+├── docs/                  # 이론 자료
+│   ├── 01_intro.md        # 이론 챕터별 정리
+│   ├── 02_rag_concept.md
+│   └── images/            # 이론 설명에 들어갈 다이어그램 등
+├── code/                  # 실습 코드 모음
+│   ├── frontend/          # 프론트엔드 소스 (Vue 3)
+│   │   ├── src/
+│   │   ├── package.json
+│   │   └── README.md      # 프론트 실행법
+│   └── backend/           # 백엔드 소스 (예정)
+│       ├── app/
+│       ├── requirements.txt
+│       └── README.md      # 백엔드 실행법
+├── docker-compose.yml     # 프론트+백엔드를 한방에 실행
+└── .gitignore             # 전체 공통 제외 파일 설정
+```
 
-이 프로젝트는 강의 자료 및 실습 코드 개발을 위한 것입니다. 기여에 대한 내용은 추후 업데이트될 예정입니다.
+## 🚀 빠른 시작
+
+### 전체 시스템 실행 (Docker Compose)
+
+```bash
+docker-compose up
+```
+
+### 개별 실행
+
+#### 프론트엔드 실행
+
+```bash
+cd code/frontend
+npm install
+npm run dev
+```
+
+프론트엔드는 `http://localhost:5173`에서 실행됩니다.
+
+자세한 내용은 [프론트엔드 README](code/frontend/README.md)를 참고하세요.
+
+#### 백엔드 실행 (예정)
+
+```bash
+cd code/backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload
+```
+
+자세한 내용은 [백엔드 README](code/backend/README.md)를 참고하세요.
+
+## 📖 학습 경로
+
+### 1단계: 이론 학습
+`docs/` 디렉토리의 이론 자료를 순서대로 학습합니다:
+
+1. **01_intro.md** - Agentic RAG 소개
+2. **02_rag_concept.md** - RAG 개념 이해
+3. (추가 이론 자료...)
+
+### 2단계: 실습 코드 분석
+`code/` 디렉토리의 실습 코드를 분석하고 실행해봅니다:
+
+- **프론트엔드**: Vue 3 기반 채팅 인터페이스
+- **백엔드**: FastAPI 기반 RAG 시스템 (예정)
+
+### 3단계: 직접 구현
+이론과 실습 코드를 바탕으로 자신만의 Agentic RAG 시스템을 구현합니다.
+
+## 🛠 기술 스택
+
+### 프론트엔드
+- Vue 3 (Composition API)
+- Vite
+- Pinia (상태 관리)
+- Vue Router
+- Tailwind CSS
+
+### 백엔드 (예정)
+- FastAPI
+- Python 3.10+
+
+## 📝 주요 기능
+
+### 프론트엔드
+- ✅ 실시간 채팅 인터페이스
+- ✅ Mock AI 어시스턴트 데모
+- ✅ 메시지 히스토리 관리
+- ✅ 마크다운 렌더링
+- ✅ 반응형 디자인
+
+### 백엔드 (예정)
+- 🔄 RAG 시스템 구현
+- 🔄 Vector Store 연동
+- 🔄 LLM API 통합
+- 🔄 Agent 워크플로우
+
+## 🎯 실습 목표
+
+각 실습을 통해 다음을 학습할 수 있습니다:
+
+1. **RAG 기본 구현**: 문서 검색 및 생성 파이프라인 구축
+2. **Agent 구조**: AI 에이전트의 의사결정 프로세스 이해
+3. **Agentic RAG**: RAG와 Agent를 결합한 시스템 설계
+4. **Multi-Agent**: 여러 에이전트 간 협업 시스템 구축
+
+## 📚 참고 자료
+
+- [LangChain 공식 문서](https://python.langchain.com/)
+- [LlamaIndex 공식 문서](https://www.llamaindex.ai/)
+- [Vue 3 공식 문서](https://vuejs.org/)
+
+## 🤝 기여
+
+이 프로젝트는 교육용 자료입니다. 개선 사항이나 버그 리포트는 이슈로 등록해주세요.
+
+## 📄 라이선스
+
+이 프로젝트는 교육 목적으로 자유롭게 사용할 수 있습니다.
+
+## 🔗 관련 링크
+
+- 이론 자료: `docs/` 디렉토리
+- 프론트엔드 코드: `code/frontend/` 디렉토리
+- 백엔드 코드: `code/backend/` 디렉토리 (예정)
+
+---
+
+**시작하기**: [프론트엔드 README](code/frontend/README.md)를 확인하여 첫 번째 실습을 시작하세요!

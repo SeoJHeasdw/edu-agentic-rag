@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./code/frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./code/frontend:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+    command: npm run dev
+    networks:
+      - edu-agentic-rag-network
+
+  # backend:
+  #   build:
+  #     context: ./code/backend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - ./code/backend:/app
+  #   environment:
+  #     - PYTHONUNBUFFERED=1
+  #   networks:
+  #     - edu-agentic-rag-network
+
+networks:
+  edu-agentic-rag-network:
+    driver: bridge
+
