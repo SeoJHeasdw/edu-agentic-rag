@@ -19,18 +19,22 @@ Agentic RAG(Retrieval-Augmented Generation)에 대한 이론과 실습을 통합
 edu-agentic-rag/
 ├── README.md              # 프로젝트 전체 소개 및 실행 가이드
 ├── docs/                  # 이론 자료
-│   ├── 01_intro.md        # 이론 챕터별 정리
-│   ├── 02_rag_concept.md
-│   └── images/            # 이론 설명에 들어갈 다이어그램 등
+│   ├── Agentic_RAG_Basic.md
+│   └── lecture_outline.md
 ├── code/                  # 실습 코드 모음
 │   ├── frontend/          # 프론트엔드 소스 (Vue 3)
 │   │   ├── src/
+│   │   │   ├── config/    # API 설정
+│   │   │   ├── utils/     # API 유틸리티
+│   │   │   └── stores/    # 상태 관리
 │   │   ├── package.json
 │   │   └── README.md      # 프론트 실행법
-│   └── backend/           # 백엔드 소스 (예정)
-│       ├── app/
-│       ├── requirements.txt
-│       └── README.md      # 백엔드 실행법
+│   └── backend/           # 백엔드 서비스들
+│       └── chatbot-service/  # 챗봇 서비스
+│           ├── app/          # FastAPI 앱
+│           ├── config.yml    # LLM 제공자 설정
+│           ├── requirements.txt
+│           └── README.md     # 서비스 실행법
 ├── docker-compose.yml     # 프론트+백엔드를 한방에 실행
 └── .gitignore             # 전체 공통 제외 파일 설정
 ```
@@ -57,15 +61,23 @@ npm run dev
 
 자세한 내용은 [프론트엔드 README](code/frontend/README.md)를 참고하세요.
 
-#### 백엔드 실행 (예정)
+#### 백엔드 실행 (Chatbot Service)
 
 ```bash
-cd code/backend
+cd code/backend/chatbot-service
 pip install -r requirements.txt
+
+# 환경 변수 설정 (.env 파일 생성)
+cp .env.example .env
+# .env 파일을 편집하여 API 키 설정
+
+# 개발 서버 실행
 python -m uvicorn app.main:app --reload
 ```
 
-자세한 내용은 [백엔드 README](code/backend/README.md)를 참고하세요.
+백엔드는 `http://localhost:8000`에서 실행됩니다.
+
+자세한 내용은 [Chatbot Service README](code/backend/chatbot-service/README.md)를 참고하세요.
 
 ## 📖 학습 경로
 
@@ -80,7 +92,7 @@ python -m uvicorn app.main:app --reload
 `code/` 디렉토리의 실습 코드를 분석하고 실행해봅니다:
 
 - **프론트엔드**: Vue 3 기반 채팅 인터페이스
-- **백엔드**: FastAPI 기반 RAG 시스템 (예정)
+- **백엔드**: FastAPI 기반 챗봇 API (OpenAI / Azure OpenAI 지원)
 
 ### 3단계: 직접 구현
 이론과 실습 코드를 바탕으로 자신만의 Agentic RAG 시스템을 구현합니다.
@@ -94,9 +106,11 @@ python -m uvicorn app.main:app --reload
 - Vue Router
 - Tailwind CSS
 
-### 백엔드 (예정)
-- FastAPI
-- Python 3.10+
+### 백엔드
+- ✅ FastAPI
+- ✅ Python 3.10+
+- ✅ OpenAI / Azure OpenAI 지원
+- ✅ config.yml을 통한 LLM 제공자 전환
 
 ## 📝 주요 기능
 
@@ -107,11 +121,14 @@ python -m uvicorn app.main:app --reload
 - ✅ 마크다운 렌더링
 - ✅ 반응형 디자인
 
-### 백엔드 (예정)
-- 🔄 RAG 시스템 구현
-- 🔄 Vector Store 연동
-- 🔄 LLM API 통합
-- 🔄 Agent 워크플로우
+### 백엔드
+- ✅ 기본 챗봇 API 구현
+- ✅ OpenAI / Azure OpenAI 통합
+- ✅ 스트리밍 응답 지원
+- ✅ 대화 히스토리 관리
+- 🔄 RAG 시스템 구현 (예정)
+- 🔄 Vector Store 연동 (예정)
+- 🔄 Agent 워크플로우 (예정)
 
 ## 🎯 실습 목표
 
@@ -140,7 +157,7 @@ python -m uvicorn app.main:app --reload
 
 - 이론 자료: `docs/` 디렉토리
 - 프론트엔드 코드: `code/frontend/` 디렉토리
-- 백엔드 코드: `code/backend/` 디렉토리 (예정)
+- 백엔드 코드: `code/backend/` 디렉토리
 
 ---
 

@@ -16,18 +16,25 @@ services:
     networks:
       - edu-agentic-rag-network
 
-  # backend:
-  #   build:
-  #     context: ./code/backend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "8000:8000"
-  #   volumes:
-  #     - ./code/backend:/app
-  #   environment:
-  #     - PYTHONUNBUFFERED=1
-  #   networks:
-  #     - edu-agentic-rag-network
+  chatbot-service:
+    build:
+      context: ./code/backend/chatbot-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./code/backend/chatbot-service:/app
+    environment:
+      - PYTHONUNBUFFERED=1
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - AZURE_OPENAI_API_KEY=${AZURE_OPENAI_API_KEY:-}
+      - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT:-}
+      - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}
+      - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-}
+    env_file:
+      - ./code/backend/chatbot-service/.env
+    networks:
+      - edu-agentic-rag-network
 
 networks:
   edu-agentic-rag-network:
