@@ -14,3 +14,10 @@ llm:
     api_version: "${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}"
     temperature: 0.7
     max_tokens: 2000
+
+# Vector DB (Qdrant - Local)
+qdrant:
+  host: "${QDRANT_HOST:-localhost}"
+  port: ${QDRANT_PORT:-6333}
+  grpc_port: ${QDRANT_GRPC_PORT:-6334}
+  collection: "${QDRANT_COLLECTION:-edu-agentic-rag}"

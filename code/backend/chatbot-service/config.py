@@ -79,8 +79,10 @@ def load_config():
     # - Server config can be overridden per service via chatbot-service/config.yml
     config_data = dict(backend_cfg)
     
-    # Extract LLM config (backend only)
-    llm_data = backend_cfg.get("llm", {}) or {}
+    # Extract LLM config
+    # - Prefer backend/config.yml (centralized, "forced")
+    # - If backend config is missing, fall back to service config.yml (project-local defaults)
+    llm_data = (backend_cfg.get("llm") or service_cfg.get("llm") or {})
     provider = llm_data.get("provider", "openai")
     
     # Get OpenAI config
