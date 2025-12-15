@@ -40,8 +40,6 @@ chatbot-service/
 │   │   └── intent_classifier_mock.py
 │
 ├── requirements.txt      # Python 의존성
-├── .env                  # 환경 변수 (로컬 설정)
-├── .env.example          # 환경 변수 예제
 ├── Dockerfile           # Docker 이미지 빌드 파일
 └── README.md            # 이 파일
 ```
@@ -63,13 +61,14 @@ pip install -r requirements.txt
 
 ### 3. 환경 변수 설정
 
-`.env` 파일을 생성하고 API 키를 설정합니다:
+이 프로젝트는 **backend 공용 `.env`**를 사용합니다:
 
 ```bash
+cd ../
 cp .env.example .env
 ```
 
-`.env` 파일을 편집하여 필요한 API 키를 입력합니다:
+`backend/.env` 파일을 편집하여 필요한 API 키를 입력합니다:
 
 ```env
 # OpenAI 사용 시
@@ -89,7 +88,11 @@ AZURE_EMBEDDING_SMALL_MODEL=oss-embedding-small
 
 ### 4. LLM 제공자 선택
 
-`config.yml` 파일에서 사용할 LLM 제공자를 선택합니다:
+LLM 제공자/모델 같은 공용 설정은 `backend/config.yml`에서 제어하는 것을 권장합니다.
+
+서비스별 `config.yml`은 주로 **server 설정(CORS/port 등)** 용도로 두는 것을 권장합니다.
+
+예시(backend/config.yml):
 
 ```yaml
 llm:

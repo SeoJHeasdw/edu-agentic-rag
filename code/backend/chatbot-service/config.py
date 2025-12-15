@@ -3,18 +3,35 @@ Configuration management for the chatbot backend.
 Supports both OpenAI and Azure OpenAI providers.
 """
 import os
-import yaml
 from pathlib import Path
-from typing import Literal
-from pydantic_settings import BaseSettings
+from typing import Any, Literal
+
+import yaml
 from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
-# Load environment variables
-load_dotenv()
+# Directories
+SERVICE_DIR = Path(__file__).parent                    # code/backend/chatbot-service
+BACKEND_DIR = SERVICE_DIR.parent                       # code/backend
 
-# Get the base directory (chatbot-service directory)
-BASE_DIR = Path(__file__).parent
-CONFIG_FILE = BASE_DIR / "config.yml"
+# Load environment variables (backend-level first, then service-level override if present)
+load_dotenv(dotenv_path=BACKEND_DIR / ".env", override=False)
+load_dotenv(dotenv_path=SERVICE_DIR / ".env", override=True)
+
+# Config files (backend-level first, then service-level override)
+BACKEND_CONFIG_FILE = BACKEND_DIR / "config.yml"
+SERVICE_CONFIG_FILE = SERVICE_DIR / "config.yml"
+
+
+def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
+    """Recursively merge override into base (override wins)."""
+    out: dict[str, Any] = dict(base)
+    for k, v in (override or {}).items():
+        if isinstance(v, dict) and isinstance(out.get(k), dict):
+            out[k] = _deep_merge(out[k], v)  # type: ignore[arg-type]
+        else:
+            out[k] = v
+    return out
 
 
 class LLMConfig(BaseSettings):
@@ -46,12 +63,19 @@ class ServerConfig(BaseSettings):
 
 def load_config():
     """Load configuration from config.yml and environment variables"""
-    config_data = {}
-    
-    # Load YAML config if exists
-    if CONFIG_FILE.exists():
-        with open(CONFIG_FILE, "r", encoding="utf-8") as f:
-            config_data = yaml.safe_load(f) or {}
+    backend_cfg: dict[str, Any] = {}
+    service_cfg: dict[str, Any] = {}
+
+    if BACKEND_CONFIG_FILE.exists():
+        with open(BACKEND_CONFIG_FILE, "r", encoding="utf-8") as f:
+            backend_cfg = yaml.safe_load(f) or {}
+
+    if SERVICE_CONFIG_FILE.exists():
+        with open(SERVICE_CONFIG_FILE, "r", encoding="utf-8") as f:
+            service_cfg = yaml.safe_load(f) or {}
+
+    # backend -> service merge (service wins)
+    config_data = _deep_merge(backend_cfg, service_cfg)
     
     # Extract LLM config
     llm_data = config_data.get("llm", {})

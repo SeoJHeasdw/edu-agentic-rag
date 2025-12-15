@@ -1,0 +1,16 @@
+# Shared backend config (safe to commit)
+# Secrets should live in code/backend/.env (NOT committed)
+
+llm:
+  provider: "azure_openai"  # "openai" or "azure_openai"
+
+  openai:
+    model: "gpt-4o-mini"
+    base_url: "https://api.openai.com/v1"
+    temperature: 0.7
+    max_tokens: 2000
+
+  azure_openai:
+    api_version: "${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}"
+    temperature: 0.7
+    max_tokens: 2000
