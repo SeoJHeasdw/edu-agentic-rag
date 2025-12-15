@@ -114,7 +114,7 @@ API 문서는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
 ### 1. LLM 제공자 지원
 - ✅ OpenAI API 지원
 - ✅ Azure OpenAI API 지원
-- ✅ `config.yml`을 통한 쉬운 제공자 전환
+- ✅ `backend/config.yml`을 통한 쉬운 제공자 전환(공용)
 
 ### 2. 채팅 API
 - ✅ 일반 채팅 응답 (`POST /api/chat`)

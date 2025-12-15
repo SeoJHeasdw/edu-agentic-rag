@@ -74,11 +74,13 @@ def load_config():
         with open(SERVICE_CONFIG_FILE, "r", encoding="utf-8") as f:
             service_cfg = yaml.safe_load(f) or {}
 
-    # backend -> service merge (service wins)
-    config_data = _deep_merge(backend_cfg, service_cfg)
+    # IMPORTANT:
+    # - LLM config is controlled centrally by backend/config.yml (service overrides disabled by default)
+    # - Server config can be overridden per service via chatbot-service/config.yml
+    config_data = dict(backend_cfg)
     
-    # Extract LLM config
-    llm_data = config_data.get("llm", {})
+    # Extract LLM config (backend only)
+    llm_data = backend_cfg.get("llm", {}) or {}
     provider = llm_data.get("provider", "openai")
     
     # Get OpenAI config
@@ -125,8 +127,8 @@ def load_config():
         azure_openai_max_tokens=azure_data.get("max_tokens", 2000),
     )
     
-    # Extract server config
-    server_data = config_data.get("server", {})
+    # Extract server config (backend -> service merge; service wins)
+    server_data = _deep_merge(backend_cfg.get("server", {}) or {}, service_cfg.get("server", {}) or {})
     server_config = ServerConfig(
         host=server_data.get("host", "0.0.0.0"),
         port=server_data.get("port", 8000),
