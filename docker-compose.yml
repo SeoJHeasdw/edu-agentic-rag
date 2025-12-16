@@ -32,7 +32,7 @@ services:
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION:-2024-12-01-preview}
       - AZURE_OPENAI_DEPLOYMENT_NAME=${AZURE_OPENAI_DEPLOYMENT_NAME:-}
     env_file:
-      - ./code/backend/chatbot-service/.env
+      - ./code/backend/.env
     networks:
       - edu-agentic-rag-network
 
