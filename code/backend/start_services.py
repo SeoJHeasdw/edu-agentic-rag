@@ -60,7 +60,9 @@ def start_service(backend_dir: Path, svc: dict) -> subprocess.Popen[str] | None:
     env.update(dict(**(dict())))
     env.update(dict(**(dict())))
 
-    # Base env + PYTHONPATH so chatbot-service can import backend/agents
+    # Base env + PYTHONPATH:
+    # - keeps backend root importable (shared_config/shared_utils)
+    # - each service can stay self-contained within its directory
     import os
 
     env = os.environ.copy()

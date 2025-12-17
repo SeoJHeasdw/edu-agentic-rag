@@ -21,6 +21,7 @@ import httpx
 from models import ChatMessage
 from agents.intent_classifier import IntentClassifier
 from agents.context_manager import get_or_create_session, context_manager
+from agents.task_planner import TaskPlannerAgent
 import time
 
 
@@ -59,6 +60,19 @@ def _extract_time(text: str) -> str:
         return f"{int(m.group(1)):02d}:{int(m.group(2)):02d}"
     return "09:00"
 
+def _format_todo(tasks: List[str]) -> str:
+    if not tasks:
+        return ""
+    lines = ["### To-Do", *[f"{i+1}. {t}" for i, t in enumerate(tasks)]]
+    return "\n".join(lines)
+
+def _with_plan(response_text: str, plan: Dict[str, Any]) -> str:
+    tasks = plan.get("tasks") or []
+    todo = _format_todo(tasks)
+    if not todo:
+        return response_text
+    return f"{todo}\n\n### 실행 결과\n{response_text}"
+
 
 @dataclass
 class Orchestrator:
@@ -89,9 +103,12 @@ class Orchestrator:
         classifier = IntentClassifier()
         analysis = classifier.analyze_intent(message, context=None)
         intent = analysis.get("intent", infer_intent(message))
+        planner = TaskPlannerAgent()
+        plan = planner.plan(user_input=message, analysis=analysis)
         meta: Dict[str, Any] = {
             "intent": intent,
             "analysis": analysis,
+            "plan": plan,
             "session_id": session_id,
             "recent_turns": context_manager.get_recent_turns(session_id, n=5),
         }
@@ -115,7 +132,10 @@ class Orchestrator:
                 r.raise_for_status()
                 data = r.json()
                 meta["weather"] = data
-                response_text = f"{data['city']} 현재 날씨는 {data['condition']}, {data['temperature']}°C 입니다."
+                response_text = _with_plan(
+                    f"{data['city']} 현재 날씨는 {data['condition']}, {data['temperature']}°C 입니다.",
+                    plan,
+                )
                 context_manager.add_conversation_turn(
                     session_id=session_id,
                     user_input=message,
@@ -136,7 +156,7 @@ class Orchestrator:
                 data = r.json()
                 meta["calendar"] = data
                 if data.get("total_events", 0) == 0:
-                    response_text = f"{data.get('date')} 일정이 없습니다."
+                    response_text = _with_plan(f"{data.get('date')} 일정이 없습니다.", plan)
                     context_manager.add_conversation_turn(
                         session_id=session_id,
                         user_input=message,
@@ -151,7 +171,10 @@ class Orchestrator:
                     return {"message": response_text, "meta": meta, "conversation_id": session_id}
                 events = data.get("events", [])
                 lines = [f"- {e.get('start_time')} {e.get('title')}" for e in events[:10]]
-                response_text = f"{data.get('date')} 일정 {data.get('total_events')}개:\n" + "\n".join(lines)
+                response_text = _with_plan(
+                    f"{data.get('date')} 일정 {data.get('total_events')}개:\n" + "\n".join(lines),
+                    plan,
+                )
                 context_manager.add_conversation_turn(
                     session_id=session_id,
                     user_input=message,
@@ -176,7 +199,10 @@ class Orchestrator:
                 r.raise_for_status()
                 data = r.json()
                 meta["calendar_create"] = data
-                response_text = f"일정을 생성했어요: {data.get('start_time')} - {data.get('title')} (id={data.get('id')})"
+                response_text = _with_plan(
+                    f"일정을 생성했어요: {data.get('start_time')} - {data.get('title')} (id={data.get('id')})",
+                    plan,
+                )
                 context_manager.add_conversation_turn(
                     session_id=session_id,
                     user_input=message,
@@ -197,7 +223,7 @@ class Orchestrator:
                 meta["file_search"] = data
                 files = data.get("files", [])
                 if not files:
-                    response_text = f"'{message}' 검색 결과가 없습니다."
+                    response_text = _with_plan(f"'{message}' 검색 결과가 없습니다.", plan)
                     context_manager.add_conversation_turn(
                         session_id=session_id,
                         user_input=message,
@@ -213,7 +239,10 @@ class Orchestrator:
                 lines = []
                 for f in files[:8]:
                     lines.append(f"- {f.get('name')} ({f.get('path')})")
-                response_text = f"검색 결과 {data.get('total_matches')}개:\n" + "\n".join(lines)
+                response_text = _with_plan(
+                    f"검색 결과 {data.get('total_matches')}개:\n" + "\n".join(lines),
+                    plan,
+                )
                 context_manager.add_conversation_turn(
                     session_id=session_id,
                     user_input=message,
@@ -234,7 +263,7 @@ class Orchestrator:
                 r.raise_for_status()
                 data = r.json()
                 meta["notification"] = data
-                response_text = f"[mock] {channel} 알림 발송 완료 (id={data.get('id')})"
+                response_text = _with_plan(f"[mock] {channel} 알림 발송 완료 (id={data.get('id')})", plan)
                 context_manager.add_conversation_turn(
                     session_id=session_id,
                     user_input=message,
@@ -258,12 +287,15 @@ class Orchestrator:
                     hits = data.get("hits", [])
                     if hits:
                         top = hits[0]
-                        response_text = f"관련 문서 기반 답변(Top1):\n- {top.get('text','')}\n(출처: {top.get('source','')})"
+                        response_text = _with_plan(
+                            f"관련 문서 기반 답변(Top1):\n- {top.get('text','')}\n(출처: {top.get('source','')})",
+                            plan,
+                        )
                     else:
-                        response_text = "관련 문서를 찾지 못했어요."
+                        response_text = _with_plan("관련 문서를 찾지 못했어요.", plan)
                 except Exception as e:
                     meta["rag_error"] = str(e)
-                    response_text = message
+                    response_text = _with_plan(message, plan)
 
                 context_manager.add_conversation_turn(
                     session_id=session_id,
@@ -279,7 +311,7 @@ class Orchestrator:
                 return {"message": response_text, "meta": meta, "conversation_id": session_id}
 
         # Fallback
-        response_text = message
+        response_text = _with_plan(message, plan)
         context_manager.add_conversation_turn(
             session_id=session_id,
             user_input=message,

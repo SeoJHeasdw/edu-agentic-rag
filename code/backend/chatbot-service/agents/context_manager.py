@@ -1,9 +1,7 @@
 """
 Conversation context manager (lab-friendly, no external dependencies).
 
-Ported and simplified from code/example/rag_system/context_manager.py:
-- removes sys.path hacks
-- keeps in-memory session + rolling window
+Moved from backend/agents/context_manager.py to keep orchestrator-specific agents under chatbot-service.
 """
 
 from __future__ import annotations
@@ -62,7 +60,6 @@ class ContextManager:
                 try:
                     self.cleanup_expired_sessions()
                 except Exception:
-                    # keep running even on errors
                     pass
 
         self._cleanup_thread = threading.Thread(target=worker, daemon=True)
@@ -109,7 +106,6 @@ class ContextManager:
     ) -> str:
         with self._lock:
             if session_id not in self.active_sessions:
-                # create session with provided id-style (but keep stable)
                 self.active_sessions[session_id] = SessionContext(
                     session_id=session_id,
                     user_id=None,
@@ -139,35 +135,22 @@ class ContextManager:
             session.conversation_turns.append(turn)
             self.context_windows[session_id].append(turn)
             self.update_session_activity(session_id)
-            self._update_active_topics(session_id, intent, user_input)
             return turn_id
-
-    def _update_active_topics(self, session_id: str, intent: str, user_input: str) -> None:
-        session = self.active_sessions.get(session_id)
-        if not session:
-            return
-        if intent and intent not in session.active_topics:
-            session.active_topics.append(intent)
-        # keep last 5 topics
-        if len(session.active_topics) > 5:
-            session.active_topics = session.active_topics[-5:]
 
     def get_recent_turns(self, session_id: str, n: int = 5) -> List[Dict[str, Any]]:
         with self._lock:
             window = list(self.context_windows.get(session_id, deque()))
             turns = window[-n:]
-            out = []
-            for t in turns:
-                out.append(
-                    {
-                        "user_input": t.user_input,
-                        "assistant_response": t.assistant_response,
-                        "intent": t.intent,
-                        "success": t.success,
-                        "timestamp": t.timestamp,
-                    }
-                )
-            return out
+            return [
+                {
+                    "user_input": t.user_input,
+                    "assistant_response": t.assistant_response,
+                    "intent": t.intent,
+                    "success": t.success,
+                    "timestamp": t.timestamp,
+                }
+                for t in turns
+            ]
 
     def export_session(self, session_id: str) -> Dict[str, Any]:
         with self._lock:
@@ -195,7 +178,6 @@ def get_or_create_session(session_id: Optional[str] = None, user_id: Optional[st
         context_manager.update_session_activity(session_id)
         return session_id
     if session_id and not context_manager.get_session(session_id):
-        # accept caller-provided id (keep stable)
         context_manager.active_sessions[session_id] = SessionContext(
             session_id=session_id,
             user_id=user_id,

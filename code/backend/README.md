@@ -6,6 +6,7 @@
 
 - **환경 변수**: `backend/.env` (커밋하지 않음)
 - **공용 설정 파일**: `backend/config.yml` (커밋해도 안전: provider/model 등 “비-시크릿”만)
+- **(실습용) 공용 의존성**: `backend/shared_requirements.txt` (백엔드 전체를 venv 1개로 실행)
 
 권장 흐름:
 
@@ -13,6 +14,15 @@
 cd code/backend
 cp .env.example .env
 # .env에 API 키/엔드포인트/디플로이먼트 이름 입력
+```
+
+실습용(권장): venv 하나로 백엔드 전체 의존성 설치
+
+```bash
+cd code/backend
+python -m venv venv
+source venv/bin/activate
+pip install -r shared_requirements.txt
 ```
 
 ## 서비스 구조
