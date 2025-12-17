@@ -13,16 +13,22 @@ class LLMService:
     def __init__(self):
         self.provider = llm_config.provider
         self._client = None
+        self._initialized = False
         self._initialize_client()
     
     def _initialize_client(self):
         """Initialize the appropriate LLM client based on provider"""
+        if self.provider == "mock":
+            self._client = None
+            self._initialized = True
+            return
+
         if self.provider == "azure_openai":
-            if not llm_config.azure_openai_api_key or not llm_config.azure_openai_endpoint:
-                raise ValueError(
-                    "Azure OpenAI configuration is incomplete. "
-                    "Please set AZURE_OPENAI_API_KEY, AZURE_OPENAI_ENDPOINT, and AZURE_OPENAI_DEPLOYMENT_NAME"
-                )
+            if not (llm_config.azure_openai_api_key and llm_config.azure_openai_endpoint and llm_config.azure_openai_deployment_name):
+                self.provider = "mock"
+                self._client = None
+                self._initialized = True
+                return
             self._client = AzureOpenAI(
                 api_key=llm_config.azure_openai_api_key,
                 api_version=llm_config.azure_openai_api_version,
@@ -31,11 +37,13 @@ class LLMService:
             self._deployment_name = llm_config.azure_openai_deployment_name
             self._temperature = llm_config.azure_openai_temperature
             self._max_tokens = llm_config.azure_openai_max_tokens
+            self._initialized = True
         else:  # openai
             if not llm_config.openai_api_key:
-                raise ValueError(
-                    "OpenAI API key is not set. Please set OPENAI_API_KEY environment variable"
-                )
+                self.provider = "mock"
+                self._client = None
+                self._initialized = True
+                return
             self._client = OpenAI(
                 api_key=llm_config.openai_api_key,
                 base_url=llm_config.openai_base_url,
@@ -43,6 +51,10 @@ class LLMService:
             self._model = llm_config.openai_model
             self._temperature = llm_config.openai_temperature
             self._max_tokens = llm_config.openai_max_tokens
+            self._initialized = True
+
+    def is_enabled(self) -> bool:
+        return self.provider in ("openai", "azure_openai") and self._client is not None
     
     def chat(
         self,
@@ -59,6 +71,11 @@ class LLMService:
         Returns:
             The assistant's response
         """
+        if not self._initialized:
+            self._initialize_client()
+        if self.provider == "mock":
+            return "현재 LLM이 설정되지 않아(mock) 마이크로서비스 오케스트레이터로 처리합니다."
+
         # Build messages list
         messages = []
         
@@ -109,6 +126,14 @@ class LLMService:
         Yields:
             Chunks of the assistant's response
         """
+        if not self._initialized:
+            self._initialize_client()
+        if self.provider == "mock":
+            text = self.chat(message=message, conversation_history=conversation_history)
+            for i in range(0, len(text), 32):
+                yield text[i : i + 32]
+            return
+
         # Build messages list
         messages = []
         

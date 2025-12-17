@@ -36,7 +36,7 @@ def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any
 
 class LLMConfig(BaseSettings):
     """LLM provider configuration"""
-    provider: Literal["openai", "azure_openai"] = "openai"
+    provider: Literal["openai", "azure_openai", "mock"] = "mock"
     
     # OpenAI settings
     openai_api_key: str = ""
@@ -83,7 +83,7 @@ def load_config():
     # - Prefer backend/config.yml (centralized, "forced")
     # - If backend config is missing, fall back to service config.yml (project-local defaults)
     llm_data = (backend_cfg.get("llm") or service_cfg.get("llm") or {})
-    provider = llm_data.get("provider", "openai")
+    provider = llm_data.get("provider", "mock")
     
     # Get OpenAI config
     openai_data = llm_data.get("openai", {})
@@ -128,6 +128,13 @@ def load_config():
         azure_openai_temperature=azure_data.get("temperature", 0.7),
         azure_openai_max_tokens=azure_data.get("max_tokens", 2000),
     )
+
+    # Lab-friendly fallback: if credentials are missing, run in mock mode.
+    if llm_config.provider == "openai" and not llm_config.openai_api_key:
+        llm_config.provider = "mock"
+    if llm_config.provider == "azure_openai":
+        if not (llm_config.azure_openai_api_key and llm_config.azure_openai_endpoint and llm_config.azure_openai_deployment_name):
+            llm_config.provider = "mock"
     
     # Extract server config (backend -> service merge; service wins)
     server_data = _deep_merge(backend_cfg.get("server", {}) or {}, service_cfg.get("server", {}) or {})

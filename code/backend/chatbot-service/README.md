@@ -40,7 +40,6 @@ chatbot-service/
 │   │   └── intent_classifier_mock.py
 │
 ├── requirements.txt      # Python 의존성
-├── Dockerfile           # Docker 이미지 빌드 파일
 └── README.md            # 이 파일
 ```
 

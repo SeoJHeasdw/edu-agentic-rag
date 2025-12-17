@@ -35,16 +35,19 @@ edu-agentic-rag/
 │           ├── config.yml    # LLM 제공자 설정
 │           ├── requirements.txt
 │           └── README.md     # 서비스 실행법
-├── docker-compose.yml     # 프론트+백엔드를 한방에 실행
+├── (Docker 미사용)        # 로컬 실행 스크립트 사용
 └── .gitignore             # 전체 공통 제외 파일 설정
 ```
 
 ## 🚀 빠른 시작
 
-### 전체 시스템 실행 (Docker Compose)
+### 전체 시스템 실행 (로컬)
+
+백엔드는 Python 런처로 한 번에 띄울 수 있습니다:
 
 ```bash
-docker-compose up
+cd code/backend
+python start_services.py
 ```
 
 ### 개별 실행

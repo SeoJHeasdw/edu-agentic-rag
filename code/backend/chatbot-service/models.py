@@ -2,7 +2,7 @@
 Chat models for request/response schemas.
 """
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 
 class ChatMessage(BaseModel):
@@ -23,4 +23,5 @@ class ChatResponse(BaseModel):
     message: str
     conversation_id: Optional[str] = None
     role: str = "assistant"
+    meta: Optional[Dict[str, Any]] = None
 
