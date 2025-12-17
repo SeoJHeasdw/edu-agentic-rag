@@ -119,14 +119,29 @@ const props = defineProps({
 const isMockMessage = computed(() => {
     try {
         const parsed = JSON.parse(props.message.content);
-        return (
-            parsed &&
-            typeof parsed === "object" &&
-            (parsed.breakpoints ||
-                parsed.currentStatus ||
-                parsed.currentResponse ||
-                parsed.finalResponse)
-        );
+        if (!parsed || typeof parsed !== "object") return false;
+
+        // 기존 mock/agent payload 키
+        if (
+            parsed.breakpoints ||
+            parsed.currentStatus ||
+            parsed.currentResponse ||
+            parsed.finalResponse
+        ) {
+            return true;
+        }
+
+        // Todo 전용 payload/변형 포맷도 허용 (백엔드 포맷이 달라도 디자인 경로를 타도록)
+        if (
+            parsed.todoList ||
+            parsed.todos ||
+            parsed.type === "todo_list" ||
+            parsed.kind === "todo_list"
+        ) {
+            return true;
+        }
+
+        return false;
     } catch (error) {
         return false;
     }

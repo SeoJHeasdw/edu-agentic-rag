@@ -16,6 +16,17 @@ export const useChatStore = defineStore("chat", () => {
     // 업로드된 파일들
     const uploadedFiles = ref([]);
 
+    const looksLikeStructuredAgentPayload = (obj) => {
+        return (
+            obj &&
+            typeof obj === "object" &&
+            (Array.isArray(obj.breakpoints) ||
+                typeof obj.currentStatus === "string" ||
+                typeof obj.currentResponse === "string" ||
+                typeof obj.finalResponse === "string")
+        );
+    };
+
     // 메시지 전송
     const sendMessage = async (messageData) => {
         const { content, files = [], mentionedDepartments = [], useStreaming = true } = messageData;
@@ -38,6 +49,14 @@ export const useChatStore = defineStore("chat", () => {
             }
         );
 
+        // assistant placeholder (전송 직후 UI가 바로 반응하도록)
+        const assistantMessageId = await conversationStore.addMessage(conversationId, {
+            role: "assistant",
+            content: "생각 중...",
+            isThinking: true,
+            isStreaming: false,
+        });
+
         // API 호출 준비
         isThinking.value = true;
         isStreaming.value = useStreaming;
@@ -55,16 +74,41 @@ export const useChatStore = defineStore("chat", () => {
             if (useStreaming) {
                 // 스트리밍 모드
                 let fullResponse = "";
+                let structuredPayload = null;
 
                 await sendStreamingChatMessage(
                     content,
                     conversationId,
                     historyMessages,
-                    (chunk) => {
+                    (chunk, meta) => {
                         // 청크 수신 시
                         isThinking.value = false;
-                        fullResponse += chunk;
+
+                        // 백엔드가 구조화된 payload를 보내는 경우(JSON)
+                        if (looksLikeStructuredAgentPayload(meta)) {
+                            structuredPayload = meta;
+                            // streaming 상태도 같이 반영
+                            structuredPayload.isThinking = false;
+                            structuredPayload.isStreaming = true;
+
+                            const jsonString = JSON.stringify(structuredPayload);
+                            streamingContent.value = jsonString;
+                            conversationStore.updateMessage(conversationId, assistantMessageId, {
+                                content: jsonString,
+                                isThinking: false,
+                                isStreaming: true,
+                            });
+                            return;
+                        }
+
+                        // 일반 텍스트 스트리밍
+                        fullResponse += chunk || "";
                         streamingContent.value = fullResponse;
+                        conversationStore.updateMessage(conversationId, assistantMessageId, {
+                            content: fullResponse.length ? fullResponse : "생각 중...",
+                            isThinking: false,
+                            isStreaming: true,
+                        });
                     },
                     (error) => {
                         // 에러 처리
@@ -72,20 +116,35 @@ export const useChatStore = defineStore("chat", () => {
                         uiStore.setError("메시지 전송 중 오류가 발생했습니다.");
                         isStreaming.value = false;
                         isThinking.value = false;
+                        conversationStore.updateMessage(conversationId, assistantMessageId, {
+                            content: "오류가 발생했습니다. 다시 시도해주세요.",
+                            isThinking: false,
+                            isStreaming: false,
+                        });
                     }
                 );
 
                 // 스트리밍 완료 후 최종 메시지 추가
                 isStreaming.value = false;
                 isThinking.value = false;
-                await conversationStore.addMessage(
-                    conversationId,
-                    {
-                        role: "assistant",
-                        content: fullResponse,
+
+                // structured 응답이면 finalResponse 중심으로 마무리 플래그만 정리
+                if (structuredPayload) {
+                    structuredPayload.isThinking = false;
+                    structuredPayload.isStreaming = false;
+                    const jsonString = JSON.stringify(structuredPayload);
+                    conversationStore.updateMessage(conversationId, assistantMessageId, {
+                        content: jsonString,
+                        isThinking: false,
                         isStreaming: false,
-                    }
-                );
+                    });
+                } else {
+                    conversationStore.updateMessage(conversationId, assistantMessageId, {
+                        content: fullResponse,
+                        isThinking: false,
+                        isStreaming: false,
+                    });
+                }
                 streamingContent.value = "";
             } else {
                 // 일반 모드
@@ -96,14 +155,11 @@ export const useChatStore = defineStore("chat", () => {
                 );
 
                 isThinking.value = false;
-                await conversationStore.addMessage(
-                    conversationId,
-                    {
-                        role: "assistant",
-                        content: response.message,
-                        isStreaming: false,
-                    }
-                );
+                conversationStore.updateMessage(conversationId, assistantMessageId, {
+                    content: response.message,
+                    isThinking: false,
+                    isStreaming: false,
+                });
             }
         } catch (error) {
             console.error("Error sending message:", error);
@@ -111,6 +167,11 @@ export const useChatStore = defineStore("chat", () => {
             isStreaming.value = false;
             isThinking.value = false;
             streamingContent.value = "";
+            conversationStore.updateMessage(conversationId, assistantMessageId, {
+                content: "오류가 발생했습니다. 다시 시도해주세요.",
+                isThinking: false,
+                isStreaming: false,
+            });
         }
     };
 

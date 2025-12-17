@@ -1,8 +1,8 @@
 <template>
     <div
         ref="scrollContainer"
-        class="h-full overflow-y-auto bg-white"
-        style="contain: layout"
+        class="h-full overflow-y-auto"
+        style="background-color: var(--color-bg-primary); contain: layout"
         @scroll="handleScroll"
     >
         <!-- 환영 메시지 -->
