@@ -124,6 +124,21 @@ class QdrantUtils:
         c = self.client()
         existing = {col.name for col in c.get_collections().collections}
         if self.collection in existing:
+            # Validate vector size to avoid confusing 400 errors later.
+            try:
+                info = c.get_collection(collection_name=self.collection)
+                cfg = getattr(info, "config", None)
+                params = getattr(cfg, "params", None) if cfg else None
+                vectors = getattr(params, "vectors", None) if params else None
+                size = getattr(vectors, "size", None) if vectors else None
+                if size is not None and int(size) != int(self.vector_size):
+                    raise RuntimeError(
+                        f"Qdrant collection '{self.collection}' vector size mismatch: expected {self.vector_size}, got {size}. "
+                        "Recreate the collection or align EMBEDDING_DIMENSION/embedding deployment."
+                    )
+            except Exception as e:
+                # Surface a clear error to callers (index/query) instead of a raw Qdrant 400.
+                raise RuntimeError(str(e))
             return
         c.create_collection(
             collection_name=self.collection,

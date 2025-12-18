@@ -44,3 +44,11 @@ ENV/
 *.temp
 .cache/
 
+# Qdrant (local vector DB data) - NEVER commit
+# - If you run Qdrant with a host volume, point it outside the repo (recommended).
+# - If you accidentally created storage inside the repo, these rules keep it out of git.
+qdrant_storage/
+**/qdrant_storage/
+.qdrant_storage/
+**/.qdrant_storage/
+

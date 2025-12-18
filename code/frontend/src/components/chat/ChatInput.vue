@@ -26,6 +26,8 @@
                             v-model="message"
                             @input="handleInput"
                             @keydown="handleKeydown"
+                            @compositionstart="handleCompositionStart"
+                            @compositionend="handleCompositionEnd"
                             @focus="isFocused = true"
                             @blur="isFocused = false"
                             :placeholder="placeholder"
@@ -178,6 +180,8 @@ const chatStore = useChatStore();
 const message = ref("");
 const textareaRef = ref(null);
 const isFocused = ref(false);
+const isComposing = ref(false);
+const suppressNextInput = ref(false);
 
 const placeholder = computed(() => {
     return chatStore.isStreaming
@@ -212,14 +216,35 @@ const adjustHeight = () => {
 
 // 키보드 이벤트 처리
 const handleKeydown = (event) => {
+    // IME(한글) 조합 중 Enter는 "조합 확정"에 쓰이므로 전송 트리거로 쓰면 마지막 글자 누락/텍스트 복귀 버그가 납니다.
     if (event.key === "Enter" && !event.shiftKey) {
+        if (event.isComposing || isComposing.value) {
+            return;
+        }
         event.preventDefault();
         sendMessage();
     }
 };
 
+const handleCompositionStart = () => {
+    isComposing.value = true;
+};
+
+const handleCompositionEnd = () => {
+    isComposing.value = false;
+    // compositionend 직후 input 이벤트가 한 번 더 들어올 수 있음 → 높이만 안정화
+    nextTick(() => adjustHeight());
+};
+
 // 텍스트 변경 감지
 const handleInput = () => {
+    // send 직후 들어오는 늦은 input(IME)로 텍스트가 되살아나는 현상 방지
+    if (suppressNextInput.value) {
+        suppressNextInput.value = false;
+        message.value = "";
+        nextTick(() => adjustHeight());
+        return;
+    }
     adjustHeight();
 };
 
@@ -227,13 +252,15 @@ const handleInput = () => {
 const sendMessage = () => {
     if (!canSend.value) return;
 
+    const content = message.value.trimEnd(); // trailing newline/space 정리(전송 품질 + IME edge)
     const messageData = {
-        content: message.value,
+        content,
         files: chatStore.uploadedFiles,
     };
 
     chatStore.sendMessage(messageData);
     message.value = "";
+    suppressNextInput.value = true;
 
     if (textareaRef.value) {
         textareaRef.value.style.height = "auto";

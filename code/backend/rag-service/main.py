@@ -1,14 +1,33 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import uuid
+import os
 
 from shared_utils import QdrantUtils, TextUtils, iter_docs_files
 
 app = FastAPI(title="RAG Service (Qdrant)", version="1.0.0")
 
 qdrant = QdrantUtils()
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv("RAG_CORS_ORIGINS", "")
+    if raw.strip():
+        return [o.strip() for o in raw.split(",") if o.strip()]
+    # dev-friendly defaults
+    return ["http://localhost:5173", "http://localhost:3000"]
+
+
+# CORS (for frontend /manage triggering indexing)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins(),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def _repo_root() -> Path:
     # repo root: .../code/backend/rag-service -> .../edu-agentic-rag
@@ -74,6 +93,42 @@ class IndexRequest(BaseModel):
     docs_root: Optional[str] = None  # default: repo docs/
     max_files: int = 200
     recreate: bool = False
+    preview: bool = True
+    preview_files: int = 20
+    preview_chunks_per_file: int = 3
+    preview_chars: int = 320
+
+
+def _build_preview(*, chunks: list[dict[str, Any]], preview_files: int, preview_chunks_per_file: int, preview_chars: int) -> list[dict[str, Any]]:
+    """
+    Build a lightweight preview grouped by source:
+    - source
+    - chunk_count
+    - sample_chunks: [{chars, preview}]
+    """
+    seen: dict[str, list[dict[str, Any]]] = {}
+    order: list[str] = []
+    for ch in chunks:
+        src = str(ch.get("source") or "")
+        if src not in seen:
+            seen[src] = []
+            order.append(src)
+        if len(seen[src]) < int(preview_chunks_per_file):
+            text = str(ch.get("text") or "")
+            prev = text[: int(preview_chars)]
+            if len(text) > int(preview_chars):
+                prev = prev + "..."
+            seen[src].append({"chars": len(text), "preview": prev})
+
+    out: list[dict[str, Any]] = []
+    for src in order[: int(preview_files)]:
+        # count is computed from original chunks list for this source
+        count = 0
+        for ch in chunks:
+            if str(ch.get("source") or "") == src:
+                count += 1
+        out.append({"source": src, "chunk_count": count, "sample_chunks": seen.get(src) or []})
+    return out
 
 
 @app.get("/health")
@@ -84,12 +139,40 @@ async def health():
     try:
         # This will fail fast if Qdrant is not reachable
         qdrant.client().get_collections()
+        has_openai_key = bool(os.getenv("OPENAI_API_KEY", "").strip())
+        has_azure_api_key = bool(os.getenv("AZURE_OPENAI_API_KEY", "").strip())
+        has_azure_endpoint = bool(os.getenv("AZURE_OPENAI_ENDPOINT", "").strip())
+        has_azure_embedding_deployment = bool(
+            (os.getenv("AZURE_EMBEDDING_DEPLOYMENT_NAME", "").strip() or os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "").strip())
+        )
+        has_azure = bool(has_azure_api_key and has_azure_endpoint and has_azure_embedding_deployment)
+        # Surface config (no secrets) to make debugging easy
+        try:
+            from shared_config import EMBEDDING_DIMENSION, EMBEDDING_MODEL, AZURE_EMBEDDING_DEPLOYMENT_NAME, QDRANT_COLLECTION
+        except Exception:
+            EMBEDDING_DIMENSION = qdrant.vector_size
+            EMBEDDING_MODEL = ""
+            AZURE_EMBEDDING_DEPLOYMENT_NAME = ""
+            QDRANT_COLLECTION = qdrant.collection
         return {
             "status": "ok",
             "qdrant_ok": True,
             "collection": qdrant.collection,
             "qdrant_host": qdrant.host,
             "qdrant_port": qdrant.port,
+            "embeddings_configured": bool(has_openai_key or has_azure),
+            "embeddings_config": {
+                "has_openai_key": has_openai_key,
+                "has_azure_api_key": has_azure_api_key,
+                "has_azure_endpoint": has_azure_endpoint,
+                "has_azure_embedding_deployment_name": has_azure_embedding_deployment,
+            },
+            "runtime_config": {
+                "qdrant_collection": QDRANT_COLLECTION,
+                "expected_vector_dim": EMBEDDING_DIMENSION,
+                "embedding_model": EMBEDDING_MODEL,
+                "azure_embedding_deployment": AZURE_EMBEDDING_DEPLOYMENT_NAME,
+            },
         }
     except Exception as e:
         raise HTTPException(
@@ -176,7 +259,15 @@ async def index_docs(req: IndexRequest):
 
     try:
         qdrant.upsert_chunks(chunks)
-        return {"indexed_files": len(files), "indexed_chunks": len(chunks), "collection": qdrant.collection}
+        resp: dict[str, Any] = {"indexed_files": len(files), "indexed_chunks": len(chunks), "collection": qdrant.collection}
+        if req.preview:
+            resp["preview"] = _build_preview(
+                chunks=chunks,
+                preview_files=req.preview_files,
+                preview_chunks_per_file=req.preview_chunks_per_file,
+                preview_chars=req.preview_chars,
+            )
+        return resp
     except Exception as e:
         msg = str(e)
         if "Connection refused" in msg or "Failed to establish a new connection" in msg:
@@ -197,4 +288,61 @@ async def index_docs(req: IndexRequest):
             )
         raise HTTPException(status_code=500, detail=msg)
 
+
+@app.post("/rag/index/qdrant-embedding-docs")
+async def index_qdrant_embedding_docs(req: IndexRequest):
+    """
+    Convenience endpoint for this repo:
+    Indexes `qdrant_embedding_docs/` at repo root into Qdrant.
+
+    Frontend should call this instead of sending filesystem paths.
+    """
+    repo_root = _repo_root()
+    docs_root = repo_root / "qdrant_embedding_docs"
+    if not docs_root.exists():
+        raise HTTPException(status_code=400, detail=f"docs_root not found: {docs_root}")
+
+    if req.recreate:
+        try:
+            qdrant.recreate_collection()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"failed to recreate collection: {e}")
+
+    chunks, files = _build_chunks(docs_root=docs_root, max_files=req.max_files)
+    if not chunks:
+        resp: dict[str, Any] = {"indexed_files": 0, "indexed_chunks": 0, "collection": qdrant.collection}
+        if req.preview:
+            resp["preview"] = []
+        return resp
+
+    try:
+        qdrant.upsert_chunks(chunks)
+        resp: dict[str, Any] = {"indexed_files": len(files), "indexed_chunks": len(chunks), "collection": qdrant.collection}
+        if req.preview:
+            resp["preview"] = _build_preview(
+                chunks=chunks,
+                preview_files=req.preview_files,
+                preview_chunks_per_file=req.preview_chunks_per_file,
+                preview_chars=req.preview_chars,
+            )
+        return resp
+    except Exception as e:
+        msg = str(e)
+        if "Connection refused" in msg or "Failed to establish a new connection" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": f"Qdrant is not running or not reachable at {qdrant.host}:{qdrant.port}. Start Qdrant and retry.",
+                },
+            )
+        if "No embedding provider configured" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": "Embeddings are not configured. Set OPENAI_API_KEY (or AZURE_OPENAI_* + AZURE_EMBEDDING_DEPLOYMENT_NAME) and retry.",
+                },
+            )
+        raise HTTPException(status_code=500, detail=msg)
 

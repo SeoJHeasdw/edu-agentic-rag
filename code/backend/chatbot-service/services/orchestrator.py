@@ -523,6 +523,67 @@ class Orchestrator:
         )
 
     @staticmethod
+    def _agentic_extract_sources_from_observations(observations: List[Dict[str, Any]]) -> List[str]:
+        sources: List[str] = []
+        for ob in observations or []:
+            if not isinstance(ob, dict):
+                continue
+            if str(ob.get("tool") or "") != "rag.query":
+                continue
+            res = ob.get("result")
+            if not isinstance(res, dict):
+                continue
+            hits = res.get("hits") or []
+            if not isinstance(hits, list):
+                continue
+            for h in hits:
+                if not isinstance(h, dict):
+                    continue
+                src = str(h.get("source") or "").strip()
+                if src and src not in sources:
+                    sources.append(src)
+        return sources
+
+    @staticmethod
+    def _agentic_extract_notification_summary(observations: List[Dict[str, Any]]) -> Optional[str]:
+        for ob in observations or []:
+            if not isinstance(ob, dict):
+                continue
+            if str(ob.get("tool") or "") != "notification.send":
+                continue
+            res = ob.get("result")
+            if not isinstance(res, dict):
+                continue
+            nid = str(res.get("id") or "").strip()
+            channel = str(res.get("channel") or "").strip() or "notification"
+            status = str(res.get("status") or "").strip()
+            if status == "sent":
+                return f"- [mock] {channel} 알림 발송 완료" + (f" (id={nid})" if nid else "")
+            if status:
+                return f"- [mock] {channel} 알림 발송 실패" + (f" (id={nid}, status={status})" if nid else f" (status={status})")
+        return None
+
+    def _agentic_postprocess_answer(self, *, answer: str, observations: List[Dict[str, Any]]) -> str:
+        """
+        Make key UX guarantees deterministic:
+        - Append citations if rag.query returned sources.
+        - Append notification delivery summary if notification.send ran.
+        """
+        out = (answer or "").strip()
+
+        sources = self._agentic_extract_sources_from_observations(observations)
+        if sources and ("근거" not in out and "출처" not in out):
+            out += "\n\n근거(출처)\n" + "\n".join([f"- {s}" for s in sources[:3]])
+
+        notif = self._agentic_extract_notification_summary(observations)
+        # Always show notification outcome if we actually executed notification.send.
+        # Avoid duplicate appends only when an explicit section already exists.
+        if notif and ("\n\n알림 결과\n" not in out):
+            out += "\n\n알림 결과\n" + notif
+
+        return out
+
+    @staticmethod
     def _agentic_topo_sort(tasks: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         by_id = {t.get("id"): t for t in tasks if isinstance(t, dict) and t.get("id")}
         visiting = set()
@@ -578,6 +639,23 @@ class Orchestrator:
         tasks = plan_obj.get("tasks") if isinstance(plan_obj.get("tasks"), list) else []
         if not tasks:
             tasks = [{"id": "t1", "text": "요청을 처리한다", "tool": "none", "args": {}, "depends_on": [], "produces": "final"}]
+
+        # Force RAG grounding for general chat so we can always attach citations.
+        # (Keeps UI/behavior simple: answer + 근거(출처))
+        if intent == "chat":
+            has_rag = any(isinstance(t, dict) and str(t.get("tool") or "") == "rag.query" for t in tasks)
+            if not has_rag:
+                tasks.insert(
+                    0,
+                    {
+                        "id": "rag-1",
+                        "text": "관련 문서를 검색한다",
+                        "tool": "rag.query",
+                        "args": {"query": message, "top_k": 4},
+                        "depends_on": [],
+                        "produces": "rag_hits",
+                    },
+                )
         tasks = self._agentic_topo_sort(tasks)
         todo = [str(t.get("text") or "") for t in tasks if isinstance(t, dict) and t.get("text")]
 
@@ -622,6 +700,7 @@ class Orchestrator:
         ).strip()
         if not final_text:
             final_text = "요청을 처리했지만 답변 생성에 실패했어요."
+        final_text = self._agentic_postprocess_answer(answer=final_text, observations=observations)
 
         return {
             "final": final_text,
@@ -659,16 +738,25 @@ class Orchestrator:
                 tasks = plan_obj.get("tasks") if isinstance(plan_obj.get("tasks"), list) else []
                 if not tasks:
                     tasks = [{"id": "t1", "text": "요청을 처리한다", "tool": "none", "args": {}, "depends_on": [], "produces": "final"}]
+
+                # Force RAG grounding for general chat so we can always attach citations.
+                if intent == "chat":
+                    has_rag = any(isinstance(t, dict) and str(t.get("tool") or "") == "rag.query" for t in tasks)
+                    if not has_rag:
+                        tasks.insert(
+                            0,
+                            {
+                                "id": "rag-1",
+                                "text": "관련 문서를 검색한다",
+                                "tool": "rag.query",
+                                "args": {"query": message, "top_k": 4},
+                                "depends_on": [],
+                                "produces": "rag_hits",
+                            },
+                        )
                 tasks = self._agentic_topo_sort(tasks)
                 todo = [str(t.get("text") or "") for t in tasks if isinstance(t, dict) and t.get("text")]
                 yield {"todo": todo, "completed": 0, "status": "계획 수립 완료"}
-
-                completed = 0
-                for t in tasks:
-                    completed = min(completed + 1, len(todo))
-                    tool = str(t.get("tool") or "none").strip()
-                    status = f"{tool} 실행 중..." if tool and tool != "none" else "진행 중..."
-                    yield {"todo": todo, "completed": completed, "status": status}
 
                 executor = self._agentic_executor()
 
@@ -700,18 +788,33 @@ class Orchestrator:
                     replan_fn=replan,
                 )
 
-                final_text = str(
-                    llm_service.chat(
-                        message=self._agentic_final_answer_prompt(user_input=message, intent=intent, tasks=final_tasks, observations=observations),
-                        conversation_history=None,
-                    )
-                    or ""
-                ).strip()
+                # Stream the final answer itself (not only status)
+                prompt = self._agentic_final_answer_prompt(user_input=message, intent=intent, tasks=final_tasks, observations=observations)
+                buf = ""
+                last_emit_len = 0
+                last_emit_t = time.time()
+                yield {"todo": todo, "completed": len(todo), "status": "답변 생성 중...", "partial": ""}
+
+                # Emit much more frequently so the UI feels like real streaming.
+                # (Still lightly throttled to avoid flooding the UI.)
+                for chunk in llm_service.stream_chat(message=prompt, conversation_history=None):
+                    buf += str(chunk or "")
+                    # flush at least every ~0.12s or every ~12 chars (whichever comes first)
+                    if (len(buf) - last_emit_len) >= 12 or (time.time() - last_emit_t) >= 0.12:
+                        yield {"todo": todo, "completed": len(todo), "status": "답변 생성 중...", "partial": buf}
+                        last_emit_len = len(buf)
+                        last_emit_t = time.time()
+
+                # final flush (in case throttling prevented last few chars from emitting)
+                if len(buf) != last_emit_len:
+                    yield {"todo": todo, "completed": len(todo), "status": "답변 생성 중...", "partial": buf}
+
+                final_text = self._agentic_postprocess_answer(answer=buf, observations=observations)
                 yield {"todo": todo, "completed": len(todo), "status": "완료", "final": final_text, "done": True}
                 return
             except Exception as e:
                 # Stream fail-safe: downgrade to rule-based stream so UI still completes.
-                yield {"todo": [], "completed": 0, "status": f"LLM 오류로 rule-based로 전환: {e}"}
+                yield {"todo": [], "completed": 0, "status": "LLM 오류로 rule-based로 전환"}
 
         # Rule-based structured stream (existing behavior moved from api/chat.py)
         classifier = IntentClassifier()
@@ -794,6 +897,34 @@ class Orchestrator:
                 return
 
         # fallback
+        # If it's general chat, do a minimal RAG-backed answer (so fallback isn't a raw echo)
+        if intent in ("chat",):
+            try:
+                completed = min(completed + 1, len(tasks))
+                yield {"todo": tasks, "completed": completed, "status": "rag-service 호출 중..."}
+                r = await client.post(f"{self.rag_base_url}/rag/query", json={"query": message, "top_k": 5})
+                r.raise_for_status()
+                data = r.json()
+                hits = data.get("hits") or []
+                if hits:
+                    lines = []
+                    sources = []
+                    for h in hits[:3]:
+                        if isinstance(h, dict):
+                            src = str(h.get("source") or "").strip()
+                            if src and src not in sources:
+                                sources.append(src)
+                    top_text = str(hits[0].get("text") or "") if isinstance(hits[0], dict) else ""
+                    final = f"{top_text}".strip() or "관련 문서를 찾았지만 요약에 실패했어요."
+                    if sources:
+                        final += "\n\n근거(출처)\n" + "\n".join([f"- {s}" for s in sources])
+                else:
+                    final = "관련 문서를 찾지 못했어요."
+            except Exception:
+                final = message
+            yield {"todo": tasks, "completed": len(tasks), "status": "완료", "final": final, "done": True}
+            return
+
         yield {"todo": tasks, "completed": len(tasks), "status": "완료", "final": message, "done": True}
 
 

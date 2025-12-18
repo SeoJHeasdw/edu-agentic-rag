@@ -170,8 +170,17 @@ class LLMService:
             )
         
         for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            try:
+                choices = getattr(chunk, "choices", None)
+                if not choices or len(choices) == 0:
+                    continue
+                delta = getattr(choices[0], "delta", None)
+                content = getattr(delta, "content", None) if delta is not None else None
+                if content:
+                    yield content
+            except Exception:
+                # Never crash streaming due to provider-specific chunk shapes
+                continue
 
 
 # Global service instance

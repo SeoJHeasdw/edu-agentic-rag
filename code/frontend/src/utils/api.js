@@ -133,3 +133,72 @@ export async function checkApiHealth() {
     }
 }
 
+/**
+ * RAG 서비스 헬스 체크 (rag-service)
+ * @returns {Promise<Object>}
+ */
+export async function checkRagHealth() {
+    try {
+        const response = await fetch(API_ENDPOINTS.RAG_HEALTH);
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            const detail = error?.detail;
+            if (typeof detail === 'string' && detail.trim()) {
+                throw new Error(detail);
+            }
+            if (detail && typeof detail === 'object') {
+                throw new Error(JSON.stringify(detail, null, 2));
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error checking rag-service health:', error);
+        throw error;
+    }
+}
+
+/**
+ * qdrant_embedding_docs 임베딩/인덱싱 실행 (rag-service)
+ * @param {Object} options
+ * @param {number} options.maxFiles - 최대 파일 수
+ * @param {boolean} options.recreate - 컬렉션 재생성 여부
+ * @returns {Promise<Object>}
+ */
+export async function indexQdrantEmbeddingDocs({ maxFiles = 200, recreate = false } = {}) {
+    try {
+        const response = await fetch(API_ENDPOINTS.RAG_INDEX_QDRANT_EMBEDDING_DOCS, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                max_files: maxFiles,
+                recreate,
+                preview: true,
+                preview_files: 20,
+                preview_chunks_per_file: 3,
+                preview_chars: 320,
+            }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+            const detail = error?.detail;
+            if (typeof detail === 'string' && detail.trim()) {
+                throw new Error(detail);
+            }
+            if (detail && typeof detail === 'object') {
+                // FastAPI can return detail as an object with hint, etc.
+                throw new Error(JSON.stringify(detail, null, 2));
+            }
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Error indexing qdrant_embedding_docs:', error);
+        throw error;
+    }
+}
+

@@ -67,6 +67,7 @@ const isUserScrolling = ref(false);
 const lastScrollTop = ref(0);
 let scrollTimeout = null;
 let isAutoScrolling = ref(false);
+let rafId = null;
 
 // 현재 대화의 메시지
 const messages = computed(() => {
@@ -88,13 +89,22 @@ const scrollToBottom = (force = false) => {
 
             container.scrollTo({
                 top: container.scrollHeight,
-                behavior: "auto",
+                behavior: chatStore.isStreaming ? "auto" : "smooth",
             });
 
             setTimeout(() => {
                 isAutoScrolling.value = false;
             }, 500);
         }
+    });
+};
+
+// Throttled auto-scroll scheduler (prevents jitter during streaming)
+const scheduleScroll = (force = false) => {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(() => {
+        rafId = null;
+        scrollToBottom(force);
     });
 };
 
@@ -131,7 +141,10 @@ const handleScroll = () => {
     }
 
     scrollTimeout = setTimeout(() => {
-        isUserScrolling.value = false;
+        // Don't force-follow again if user stopped mid-history; only reset when near bottom.
+        if (isNearBottom()) {
+            isUserScrolling.value = false;
+        }
     }, 2000);
 };
 
@@ -141,8 +154,19 @@ watch(
     (newLength, oldLength) => {
         if (newLength > (oldLength || 0)) {
             setTimeout(() => {
-                scrollToBottom(true);
+                scheduleScroll(true);
             }, 50);
+        }
+    }
+);
+
+// 스트리밍/수정으로 마지막 메시지 내용이 계속 바뀌는 케이스도 따라가기
+watch(
+    () => messages.value[messages.value.length - 1]?.content,
+    () => {
+        if (!scrollContainer.value) return;
+        if (!isUserScrolling.value || isNearBottom()) {
+            scheduleScroll(false);
         }
     }
 );
@@ -153,7 +177,7 @@ watch(
     (isStreaming, wasStreaming) => {
         if (!isStreaming && wasStreaming) {
             nextTick(() => {
-                scrollToBottom(true);
+                scheduleScroll(true);
             });
         }
     }
@@ -161,7 +185,7 @@ watch(
 
 onMounted(() => {
     nextTick(() => {
-        scrollToBottom(true);
+        scheduleScroll(true);
     });
 });
 </script>

@@ -94,7 +94,12 @@ backend/
 Qdrant 실행(가장 쉬운 방법: Docker):
 
 ```bash
-docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+# ✅ 권장: 레포 밖 경로에 Qdrant 데이터를 저장(용량 큼 / git에 올리면 안 됨)
+mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage
+docker run --name edu-qdrant --rm \
+  -p 6333:6333 -p 6334:6334 \
+  -v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage \
+  qdrant/qdrant
 ```
 
 그리고 `rag-service`는 검색/인덱싱 시 임베딩이 필요하므로 다음 중 하나를 설정해야 합니다:

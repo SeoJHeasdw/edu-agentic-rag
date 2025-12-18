@@ -72,7 +72,7 @@ async def chat_stream(request: ChatRequest):
                     items.append({"id": f"todo-{i+1}", "text": t, "completed": i < completed_count})
                 return items
 
-            def _payload(*, todo: list[str], completed_count: int, current_status: str, final_response: str | None = None, is_thinking: bool = True, is_streaming: bool = True):
+            def _payload(*, todo: list[str], completed_count: int, current_status: str, current_response: str = "", final_response: str | None = None, is_thinking: bool = True, is_streaming: bool = True):
                 return {
                     "content": "",
                     "conversation_id": request.conversation_id,
@@ -85,7 +85,7 @@ async def chat_stream(request: ChatRequest):
                         }
                     ],
                     "currentStatus": current_status,
-                    "currentResponse": "",
+                    "currentResponse": current_response or "",
                     "finalResponse": final_response or "",
                     "isThinking": is_thinking,
                     "isStreaming": is_streaming,
@@ -97,13 +97,14 @@ async def chat_stream(request: ChatRequest):
                 status = ev.get("status") or ""
                 done = bool(ev.get("done"))
                 final = ev.get("final")
+                partial = ev.get("partial") or ""
 
                 if done:
-                    yield f"data: {json.dumps(_payload(todo=todo, completed_count=len(todo), current_status='완료', final_response=str(final or ''), is_thinking=False, is_streaming=False), ensure_ascii=False)}\n\n"
+                    yield f"data: {json.dumps(_payload(todo=todo, completed_count=len(todo), current_status='완료', current_response='', final_response=str(final or ''), is_thinking=False, is_streaming=False), ensure_ascii=False)}\n\n"
                     yield "data: [DONE]\n\n"
                     return
 
-                yield f"data: {json.dumps(_payload(todo=todo, completed_count=completed, current_status=status, is_thinking=True, is_streaming=True), ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps(_payload(todo=todo, completed_count=completed, current_status=status, current_response=str(partial or ''), is_thinking=not bool(partial), is_streaming=True), ensure_ascii=False)}\n\n"
 
             yield f"data: {json.dumps(_payload(todo=[], completed_count=0, current_status='완료', final_response='', is_thinking=False, is_streaming=False), ensure_ascii=False)}\n\n"
             yield "data: [DONE]\n\n"

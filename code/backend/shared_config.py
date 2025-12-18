@@ -29,13 +29,26 @@ MAX_TOKENS = int(os.getenv("MAX_TOKENS", "2000"))
 
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
 EMBEDDING_DIMENSION = int(os.getenv("EMBEDDING_DIMENSION", "1536"))
-AZURE_EMBEDDING_DEPLOYMENT_NAME = os.getenv("AZURE_EMBEDDING_DEPLOYMENT_NAME", "")
+# Backward/alt naming compatibility:
+# - preferred: AZURE_EMBEDDING_DEPLOYMENT_NAME
+# - common in this repo's docs: AZURE_EMBEDDING_SMALL_MODEL (deployment name for 1536-dim)
+# - sometimes used: AZURE_EMBEDDING_DEPLOYMENT
+#
+# Priority:
+# 1) explicit DEPLOYMENT_NAME
+# 2) SMALL_MODEL (so "small로 쓸꺼고" works even if AZURE_EMBEDDING_DEPLOYMENT is also set)
+# 3) DEPLOYMENT
+AZURE_EMBEDDING_DEPLOYMENT_NAME = (
+    os.getenv("AZURE_EMBEDDING_DEPLOYMENT_NAME", "").strip()
+    or os.getenv("AZURE_EMBEDDING_SMALL_MODEL", "").strip()
+    or os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "").strip()
+)
 
 # Qdrant
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_GRPC_PORT = int(os.getenv("QDRANT_GRPC_PORT", "6334"))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu-agentic-rag")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu_agentic_rag")
 
 # Chunking defaults
 DEFAULT_CHUNK_SIZE = int(os.getenv("DEFAULT_CHUNK_SIZE", "900"))

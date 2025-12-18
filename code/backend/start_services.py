@@ -122,7 +122,10 @@ def main() -> int:
         print(
             "⚠️  qdrant is not reachable at localhost:6333. "
             "rag-service /rag/query will return 503 until Qdrant is started.\n"
-            "   Start Qdrant (Docker): docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant"
+            "   Start Qdrant (Docker, recommended volume outside repo):\n"
+            "     mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage\n"
+            "     docker run --name edu-qdrant --rm -p 6333:6333 -p 6334:6334 "
+            "-v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage qdrant/qdrant"
         )
 
     procs: list[tuple[dict, subprocess.Popen[str]]] = []

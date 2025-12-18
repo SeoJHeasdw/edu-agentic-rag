@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from "vue-router";
 import ChatView from "@/views/ChatView.vue";
+import ManageView from "@/views/ManageView.vue";
 
 const routes = [
     {
@@ -11,6 +12,11 @@ const routes = [
         path: "/chat",
         name: "chat",
         component: ChatView,
+    },
+    {
+        path: "/manage",
+        name: "manage",
+        component: ManageView,
     },
 ];
 
