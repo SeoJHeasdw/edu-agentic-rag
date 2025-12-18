@@ -1430,46 +1430,114 @@ agent = create_react_agent(llm, tools, react_prompt)
     ↓
 Chat API (FastAPI: chatbot-service)
     ↓
-Agent Runtime (`services/agent_runtime.py`)
+ChatService (`services/chat_service.py`) ← Multi-Agent 오케스트레이션
     ↓
-Orchestrator (`services/orchestrator.py`)
-    ↓
-IntentClassifier (`agents/intent_classifier.py`)
-    ↓
-TaskPlannerAgent (`agents/task_planner_agent.py`)  # plan / replan
-    ↓
-ToolExecutor (`services/tool_executor.py`)         # execute + cache
-    ↓
-┌──────────┬───────────┬──────────┬──────────────────┬──────────┐
-↓          ↓           ↓          ↓                  ↓          ↓
-weather    calendar    file       notification       rag        (etc)
-(8001)     (8002)      (8003)     (8004)            (8005)
-    ↓
-최종 답변 생성 (+ meta: plan/used_tools/recent_turns)
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ IntentClassifier │ → │ TaskPlannerAgent │ → │ ToolExecutor    │
+│ (의도 분류 에이전트) │   │ (계획 수립 에이전트) │   │ (실행 에이전트)   │
+│ Few-shot LLM    │    │ Plan/Replan    │    │ Execute + Cache │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                                       ↓
+       ┌──────────┬───────────┬──────────┬──────────────────┬──────────┐
+       ↓          ↓           ↓          ↓                  ↓          ↓
+   weather    calendar     file      notification        rag       (19개 도구)
+   (8001)     (8002)      (8003)      (8004)           (8005)
+       ↓
+최종 답변 생성 (+ 근거/출처 + 알림결과 + 세션 캐시)
 ```
 
 ### 핵심 컴포넌트
 
-1.  **LLM**
-    *   Agentic RAG의 핵심 두뇌로서 “계획→실행→관찰→재계획” 루프를 수행
-    *   구현: `chatbot-service/services/llm_service.py`, 설정 로드: `chatbot-service/config.py` + `code/backend/config.yml` + `.env`
+1.  **ChatService** - 비즈니스 로직 & Multi-Agent 조합
+    *   파일: `chatbot-service/services/chat_service.py`
+    *   역할: 룰 기반 ↔ 에이전트 모드 전환, 전체 실행 흐름 관리
+    *   LLM 설정: `chatbot-service/services/llm_service.py` + `config.yml` + `.env`
 
-2.  **도구 (Tools = 마이크로서비스 HTTP API)**
-    *   `weather-service`(8001): `GET /weather/{city}`
-    *   `calendar-service`(8002): `GET /calendar/today`, `POST /calendar/events`
-    *   `file-service`(8003): `GET /files/search?q=...`
-    *   `notification-service`(8004): `POST /notifications/send`
-    *   `rag-service`(8005): `POST /rag/query` (Qdrant 필요)
-    *   실행기: `chatbot-service/services/tool_executor.py` (tool registry + 실행 + 세션 캐시)
+2.  **Multi-Agent 파이프라인 (3개 전문 에이전트)**
+    *   **IntentClassifier** (`agents/intent_classifier.py`): Few-shot LLM 기반 의도 분류, 빠른 라우팅 결정
+    *   **TaskPlannerAgent** (`agents/task_planner_agent.py`): 복잡한 쿼리를 실행 가능한 서브태스크로 분해, 동적 재계획
+    *   **ToolExecutor** (`services/tool_executor.py`): 19개 도구 실행 + 세션 캐시 + ReAct 패턴
 
-3.  **에이전트 런타임 / 상태**
-    *   오케스트레이터: `chatbot-service/services/orchestrator.py`
-    *   대화 컨텍스트/캐시: `chatbot-service/agents/context_manager.py`
-    *   의도 분석: `chatbot-service/agents/intent_classifier.py`
-    *   계획/재계획: `chatbot-service/agents/task_planner_agent.py`
-    *   (참고) ReAct/LangGraph는 “개념/확장 방향”으로 소개할 수 있지만, 이 레포의 실습 구현은 **프레임워크 없이** 가볍게 구성되어 있습니다.
+3.  **Tool Registry (19개 도구 = 마이크로서비스 API)**
+    *   **Weather** (3개): `weather.get`, `weather.forecast`, `weather.cities`
+    *   **Calendar** (5개): `calendar.get`, `calendar.get_date`, `calendar.create`, `calendar.free_time`, `calendar.summary`
+    *   **File** (6개): `file.search`, `file.get`, `file.content`, `file.list`, `file.directories`, `file.create`
+    *   **Notification** (4개): `notification.send`, `notification.history`, `notification.stats`, `notification.get`
+    *   **RAG** (1개): `rag.query` (Qdrant 백엔드 필요)
 
-## 4.2 코드 리뷰: 주요 구현 포인트
+4.  **컨텍스트 & 캐싱**
+    *   대화 컨텍스트: `chatbot-service/agents/context_manager.py` (세션 관리 + 툴 결과 캐시)
+    *   TTL 기반 캐싱으로 중복 API 호출 방지 및 성능 최적화
+
+## 4.2 Multi-Agent 실행 흐름 Deep Dive
+
+### 4.2.1 실제 요청 처리 과정
+
+**예시 요청**: "다음 주 날씨 예보 보고서를 만들어서 팀에게 공유해줘"
+
+#### Step 1: IntentClassifier (라우팅)
+```python
+# agents/intent_classifier.py:63
+def analyze_intent(self, user_input: str) -> Dict[str, Any]:
+    # Few-shot LLM 프롬프트로 의도 분류
+    primary_intent = "weather_query"  # 날씨 관련으로 분류
+    apis = ["weather"]
+    
+    # 복합 요청 감지: "팀에게 공유해줘" 
+    if self._detect_notification_intent(user_input):
+        apis.append("notification")
+    
+    return {"intent": primary_intent, "apis": apis, "confidence": 0.85}
+```
+
+#### Step 2: TaskPlannerAgent (계획 수립)
+```python
+# agents/task_planner_agent.py:56
+def plan(self, user_input: str, intent: str, apis: List[str]) -> Dict[str, Any]:
+    # LLM이 자동으로 다단계 계획 생성
+    return {
+        "tasks": [
+            {"id": "t1", "tool": "weather.cities", "text": "날씨 조회 가능한 도시 목록 가져오기"},
+            {"id": "t2", "tool": "weather.forecast", "text": "특정 도시의 날씨 예보 조회", "depends_on": ["t1"]},
+            {"id": "t3", "tool": "notification.send", "text": "보고서를 팀에게 공유", "depends_on": ["t2"]}
+        ]
+    }
+```
+
+#### Step 3: ToolExecutor (실행 + 캐싱)
+```python
+# services/tool_executor.py:225
+async def execute_plan(self, tasks: List[Dict], fill_args_fn, replan_fn):
+    observations = []
+    
+    for task in self._topo_sort(tasks):  # 의존성 순서로 실행
+        tool = task["tool"]
+        
+        # 세션 캐시 확인
+        cache_key = self.make_cache_key(tool, args)
+        cached = context_manager.get_cached_tool_result(session_id, cache_key, ttl)
+        
+        if cached:
+            observations.append({"cached": True, "result": cached})
+        else:
+            result = await self.call_tool(client, tool, args)
+            context_manager.set_cached_tool_result(session_id, cache_key, result)
+            observations.append({"cached": False, "result": result})
+    
+    return observations
+```
+
+### 4.2.2 실제 실행 결과 (로그 분석)
+
+```
+INFO: POST /api/chat/stream HTTP/1.1 200 OK
+INFO: GET /weather/서울/forecast HTTP/1.1 200 OK  ← weather.forecast 실행
+INFO: POST /notifications/send HTTP/1.1 200 OK   ← notification.send 실행
+```
+
+**주목할 점**: `weather.cities`는 하드코딩 응답이라 HTTP 로그 없음 (즉시 응답)
+
+## 4.3 코드 리뷰: 주요 구현 포인트
 
 ### 4.2.1 벡터 DB 연결 및 RAG 도구 구성
 

@@ -1,5 +1,5 @@
 """
-LLM Service for handling OpenAI and Azure OpenAI API calls.
+OpenAI 및 Azure OpenAI API 호출을 처리하는 LLM 서비스.
 """
 from typing import List, Optional
 from openai import OpenAI, AzureOpenAI
@@ -8,7 +8,7 @@ from models import ChatMessage
 
 
 class LLMService:
-    """Service for interacting with LLM providers"""
+    """LLM 제공자(Provider)와의 상호작용을 위한 서비스"""
     
     def __init__(self):
         self.provider = llm_config.provider
@@ -17,7 +17,7 @@ class LLMService:
         self._initialize_client()
     
     def _initialize_client(self):
-        """Initialize the appropriate LLM client based on provider"""
+        """제공자(Provider) 설정에 따라 적절한 LLM 클라이언트를 초기화합니다."""
         if self.provider == "mock":
             self._client = None
             self._initialized = True
@@ -62,14 +62,14 @@ class LLMService:
         conversation_history: Optional[List[ChatMessage]] = None
     ) -> str:
         """
-        Send a chat message to the LLM and get a response.
+        LLM에 채팅 메시지를 전송하고 응답을 받습니다.
         
         Args:
-            message: The user's message
-            conversation_history: Previous messages in the conversation
+            message: 사용자의 메시지
+            conversation_history: 대화의 이전 메시지 내역
             
         Returns:
-            The assistant's response
+            어시스턴트(AI)의 응답 내용
         """
         if not self._initialized:
             self._initialize_client()
@@ -117,14 +117,14 @@ class LLMService:
         conversation_history: Optional[List[ChatMessage]] = None
     ):
         """
-        Stream a chat response from the LLM.
+        LLM으로부터 채팅 응답을 스트리밍 방식으로 받습니다.
         
         Args:
-            message: The user's message
-            conversation_history: Previous messages in the conversation
+            message: 사용자의 메시지
+            conversation_history: 대화의 이전 메시지 내역
             
         Yields:
-            Chunks of the assistant's response
+            어시스턴트(AI) 응답의 청크(조각) 데이터
         """
         if not self._initialized:
             self._initialize_client()

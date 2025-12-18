@@ -1,7 +1,7 @@
-# Chatbot-service local config (keep this minimal)
-# LLM config is controlled centrally by `backend/config.yml`.
+# 챗봇 서비스 로컬 설정 (최소한의 설정만 유지)
+# LLM 설정은 `backend/config.yml`에서 중앙 집중식으로 관리됩니다.
 
-# Server Configuration (service-level override OK)
+# 서버 설정 (서비스 수준에서의 개별 덮어쓰기 허용)
 server:
   host: "0.0.0.0"
   port: 8000

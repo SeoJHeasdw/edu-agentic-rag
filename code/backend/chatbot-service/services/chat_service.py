@@ -1,12 +1,17 @@
 """
-Microservice-based orchestrator (lab-friendly).
+채팅 서비스 - Agentic RAG 비즈니스 로직 (실습용).
 
-- Keyword-based intent routing (temporary; replace with shared intent classifier later)
-- Calls mock microservices via HTTP:
-  - weather-service: 8001
-  - calendar-service: 8002
-  - file-service: 8003
-  - notification-service: 8004
+Multi-Agent 아키텍처:
+- IntentClassifier: Few-shot LLM 기반 의도 분류 
+- TaskPlannerAgent: 동적 계획/재계획 수립
+- ToolExecutor: 도구 실행 + 캐싱 최적화
+
+마이크로서비스 통합:
+- weather-service (8001): 날씨 조회/예보
+- calendar-service (8002): 일정 관리
+- file-service (8003): 파일 검색/생성
+- notification-service (8004): 알림 발송
+- rag-service (8005): RAG 문서 검색
 """
 
 from __future__ import annotations
@@ -115,7 +120,7 @@ def _rule_todo_list(user_input: str, analysis: Dict[str, Any]) -> List[str]:
 
 
 @dataclass
-class Orchestrator:
+class ChatService:
     weather_base_url: str
     calendar_base_url: str
     file_base_url: str
@@ -178,7 +183,7 @@ class Orchestrator:
         else:
             llm_error = None
 
-        classifier = IntentClassifier()
+        classifier = IntentClassifier(llm_chat_fn=llm_service.chat if llm_service.is_enabled() else None)
         analysis = classifier.analyze_intent(message, context=None)
         intent = analysis.get("intent", infer_intent(message))
         apis = list(analysis.get("apis") or [])
@@ -624,7 +629,7 @@ class Orchestrator:
         recent_turns = context_manager.get_recent_turns(session_id, n=5)
 
         # 1) lightweight intent classification
-        cls = IntentClassifier()
+        cls = IntentClassifier(llm_chat_fn=llm_service.chat)
         analysis = cls.analyze_intent(message, context=None)
         intent = str(analysis.get("intent") or "chat")
         apis = list(analysis.get("apis") or [])
@@ -725,7 +730,7 @@ class Orchestrator:
                 recent_turns = context_manager.get_recent_turns(session_id, n=5)
                 yield {"todo": [], "completed": 0, "status": "의도 분석 중..."}
 
-                analysis = IntentClassifier().analyze_intent(message, context=None)
+                analysis = IntentClassifier(llm_chat_fn=llm_service.chat if llm_service.is_enabled() else None).analyze_intent(message, context=None)
                 intent = str(analysis.get("intent") or "chat")
                 apis = list(analysis.get("apis") or [])
 
@@ -817,7 +822,7 @@ class Orchestrator:
                 yield {"todo": [], "completed": 0, "status": "LLM 오류로 rule-based로 전환"}
 
         # Rule-based structured stream (existing behavior moved from api/chat.py)
-        classifier = IntentClassifier()
+        classifier = IntentClassifier(llm_chat_fn=llm_service.chat if llm_service.is_enabled() else None)
         analysis = classifier.analyze_intent(message, context=None)
         intent = analysis.get("intent", infer_intent(message))
         apis = list(analysis.get("apis") or [])
@@ -928,6 +933,6 @@ class Orchestrator:
         yield {"todo": tasks, "completed": len(tasks), "status": "완료", "final": message, "done": True}
 
 
-orchestrator = Orchestrator.from_env()
+chat_service = ChatService.from_env()
 
 

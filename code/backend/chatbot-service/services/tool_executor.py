@@ -19,16 +19,33 @@ from agents.context_manager import context_manager
 
 
 DEFAULT_TOOL_SPECS: List[Dict[str, Any]] = [
+    # Weather Tools  
     {"name": "weather.get", "description": "특정 도시의 현재 날씨를 조회한다.", "args_schema": {"city": "string (e.g., 서울)"}, "ttl": 300},
+    {"name": "weather.forecast", "description": "특정 도시의 일주일 날씨 예보를 조회한다.", "args_schema": {"city": "string (e.g., 서울)"}, "ttl": 600},
+    {"name": "weather.cities", "description": "날씨 조회 가능한 도시 목록을 가져온다.", "args_schema": {}, "ttl": 3600},
+    
+    # Calendar Tools
     {"name": "calendar.get", "description": "오늘/내일 일정을 조회한다.", "args_schema": {"when": "string (today|tomorrow)"}, "ttl": 60},
+    {"name": "calendar.get_date", "description": "특정 날짜의 일정을 조회한다.", "args_schema": {"date": "string (YYYY-MM-DD)"}, "ttl": 60},
     {"name": "calendar.create", "description": "일정을 생성한다.", "args_schema": {"title": "string", "start_time": "string (HH:MM)"}, "ttl": None},
+    {"name": "calendar.free_time", "description": "특정 날짜의 빈 시간을 조회한다.", "args_schema": {"date": "string (YYYY-MM-DD)"}, "ttl": 60},
+    {"name": "calendar.summary", "description": "전체 일정 요약 통계를 조회한다.", "args_schema": {}, "ttl": 300},
+    
+    # File Tools
     {"name": "file.search", "description": "파일/문서를 키워드로 검색한다.", "args_schema": {"q": "string"}, "ttl": 120},
-    {
-        "name": "notification.send",
-        "description": "팀/수신자에게 알림을 보낸다(모의).",
-        "args_schema": {"title": "string", "message": "string", "recipient": "string", "channel": "string (slack|email|sms)"},
-        "ttl": None,
-    },
+    {"name": "file.get", "description": "특정 파일의 상세 정보를 조회한다.", "args_schema": {"file_id": "string"}, "ttl": 300},
+    {"name": "file.content", "description": "특정 파일의 내용을 읽어온다.", "args_schema": {"file_id": "string"}, "ttl": 300},
+    {"name": "file.list", "description": "전체 파일 목록을 조회한다.", "args_schema": {}, "ttl": 180},
+    {"name": "file.directories", "description": "디렉토리 구조를 조회한다.", "args_schema": {}, "ttl": 600},
+    {"name": "file.create", "description": "새 파일을 생성한다.", "args_schema": {"name": "string", "content": "string", "path": "string"}, "ttl": None},
+    
+    # Notification Tools
+    {"name": "notification.send", "description": "팀/수신자에게 알림을 보낸다(모의).", "args_schema": {"title": "string", "message": "string", "recipient": "string", "channel": "string (slack|email|sms)"}, "ttl": None},
+    {"name": "notification.history", "description": "알림 발송 내역을 조회한다.", "args_schema": {}, "ttl": 60},
+    {"name": "notification.stats", "description": "알림 발송 통계를 조회한다.", "args_schema": {}, "ttl": 300},
+    {"name": "notification.get", "description": "특정 알림의 상세 정보를 조회한다.", "args_schema": {"notification_id": "string"}, "ttl": 300},
+    
+    # RAG Tools
     {"name": "rag.query", "description": "RAG 서비스에 질의하여 관련 문서를 찾는다.", "args_schema": {"query": "string", "top_k": "int"}, "ttl": 120},
 ]
 
@@ -78,16 +95,38 @@ class ToolExecutor:
         return None
 
     async def call_tool(self, client: httpx.AsyncClient, tool: str, args: Dict[str, Any]) -> Any:
+        # Weather Tools
         if tool == "weather.get":
             city = (args.get("city") or "서울").strip()
             r = await client.get(f"{self.weather_base_url}/weather/{city}")
             r.raise_for_status()
             return r.json()
+        
+        if tool == "weather.forecast":
+            city = (args.get("city") or "서울").strip()
+            r = await client.get(f"{self.weather_base_url}/weather/{city}/forecast")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "weather.cities":
+            # Use hardcoded city list since /cities endpoint has issues
+            return {
+                "cities": ["seoul", "busan", "incheon", "daegu", "gwangju", "daejeon", "ulsan", "sejong"],
+                "total": 8,
+                "note": "주요 한국 도시 목록"
+            }
 
+        # Calendar Tools
         if tool == "calendar.get":
             when = (args.get("when") or "today").strip().lower()
             endpoint = "/calendar/tomorrow" if when in ("tomorrow", "내일") else "/calendar/today"
             r = await client.get(f"{self.calendar_base_url}{endpoint}")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "calendar.get_date":
+            date = (args.get("date") or "").strip()
+            r = await client.get(f"{self.calendar_base_url}/calendar/date/{date}")
             r.raise_for_status()
             return r.json()
 
@@ -97,13 +136,58 @@ class ToolExecutor:
             r = await client.post(f"{self.calendar_base_url}/calendar/events", json={"title": title, "start_time": start_time})
             r.raise_for_status()
             return r.json()
+            
+        if tool == "calendar.free_time":
+            date = (args.get("date") or "").strip()
+            r = await client.get(f"{self.calendar_base_url}/calendar/free-time/{date}")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "calendar.summary":
+            r = await client.get(f"{self.calendar_base_url}/calendar/summary")
+            r.raise_for_status()
+            return r.json()
 
+        # File Tools
         if tool == "file.search":
             q = (args.get("q") or "").strip()
             r = await client.get(f"{self.file_base_url}/files/search", params={"q": q})
             r.raise_for_status()
             return r.json()
+            
+        if tool == "file.get":
+            file_id = (args.get("file_id") or "").strip()
+            r = await client.get(f"{self.file_base_url}/files/{file_id}")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "file.content":
+            file_id = (args.get("file_id") or "").strip()
+            r = await client.get(f"{self.file_base_url}/files/content/{file_id}")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "file.list":
+            r = await client.get(f"{self.file_base_url}/files")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "file.directories":
+            r = await client.get(f"{self.file_base_url}/directories")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "file.create":
+            payload = {
+                "name": (args.get("name") or "새파일.txt").strip(),
+                "content": (args.get("content") or "").strip(),
+                "path": (args.get("path") or "/").strip(),
+            }
+            r = await client.post(f"{self.file_base_url}/files", json=payload)
+            r.raise_for_status()
+            return r.json()
 
+        # Notification Tools
         if tool == "notification.send":
             payload = {
                 "title": (args.get("title") or "알림").strip(),
@@ -114,7 +198,24 @@ class ToolExecutor:
             r = await client.post(f"{self.notification_base_url}/notifications/send", json=payload)
             r.raise_for_status()
             return r.json()
+            
+        if tool == "notification.history":
+            r = await client.get(f"{self.notification_base_url}/notifications/history")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "notification.stats":
+            r = await client.get(f"{self.notification_base_url}/notifications/stats")
+            r.raise_for_status()
+            return r.json()
+            
+        if tool == "notification.get":
+            notification_id = (args.get("notification_id") or "").strip()
+            r = await client.get(f"{self.notification_base_url}/notifications/{notification_id}")
+            r.raise_for_status()
+            return r.json()
 
+        # RAG Tools
         if tool == "rag.query":
             query = (args.get("query") or "").strip()
             top_k = int(args.get("top_k") or 5)

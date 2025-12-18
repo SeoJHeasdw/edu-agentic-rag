@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from models import ChatRequest, ChatResponse, ChatMessage
 from services.llm_service import llm_service
-from services.agent_runtime import agent_runtime
+from services.chat_service import chat_service
 import json
 
 router = APIRouter(prefix="/api/chat", tags=["chat"])
@@ -29,7 +29,7 @@ async def chat(request: ChatRequest):
         
         # 런타임이 LLM on/off 모두 처리합니다.
         conversation_id = request.conversation_id
-        result = await agent_runtime.handle(
+        result = await chat_service.handle(
             message=request.message,
             conversation_id=request.conversation_id,
             conversation_history=conversation_history,
@@ -91,7 +91,7 @@ async def chat_stream(request: ChatRequest):
                     "isStreaming": is_streaming,
                 }
 
-            async for ev in agent_runtime.stream(message=request.message, conversation_id=request.conversation_id, conversation_history=conversation_history):
+            async for ev in chat_service.stream(message=request.message, conversation_id=request.conversation_id, conversation_history=conversation_history):
                 todo = ev.get("todo") or []
                 completed = int(ev.get("completed") or 0)
                 status = ev.get("status") or ""
