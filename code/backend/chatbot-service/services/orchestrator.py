@@ -471,7 +471,15 @@ class Orchestrator:
             return {}
         return {}
 
-    def _agentic_fill_args_prompt(self, *, user_input: str, tool: str, args_schema: Dict[str, Any], recent_turns: List[Dict[str, Any]]) -> str:
+    def _agentic_fill_args_prompt(
+        self,
+        *,
+        user_input: str,
+        tool: str,
+        args_schema: Dict[str, Any],
+        recent_turns: List[Dict[str, Any]],
+        observations: List[Dict[str, Any]],
+    ) -> str:
         import json as _json
 
         def _safe(x, limit=800):
@@ -487,6 +495,7 @@ class Orchestrator:
             f"tool: {tool}\n"
             f"args_schema: {args_schema}\n"
             f"최근 대화(참고): {_safe(recent_turns)}\n\n"
+            f"이전 관찰(observations, 참고): {_safe(observations)}\n\n"
             f"사용자 요청: {user_input}\n"
             '반환 형식: {"args":{...}}\n'
         )
@@ -504,6 +513,9 @@ class Orchestrator:
         return (
             "당신은 Assistant입니다. 실행 관찰 결과를 바탕으로 사용자에게 최종 답변을 생성하세요.\n"
             "불필요한 내부 계획/JSON/디버그를 노출하지 말고, 자연어로 간결하게 답하세요.\n\n"
+            "규칙:\n"
+            "- `rag.query` 관찰에 hits/source가 있으면, 답변 마지막에 **근거(출처)** 를 1~3개 bullet로 반드시 포함하세요.\n"
+            "- 사용자가 '공유/알려줘/슬랙' 등을 요청했고 `notification.send` 관찰이 있으면, '슬랙 공유 완료'를 함께 안내하세요.\n\n"
             f"Intent: {intent}\n"
             f"사용자 요청: {user_input}\n\n"
             f"계획(tasks): {_safe(tasks, 1200)}\n\n"
@@ -572,9 +584,18 @@ class Orchestrator:
         # 3) execute with cache + replans
         executor = self._agentic_executor()
 
-        def fill_args(tool: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+        def fill_args(tool: str, schema: Dict[str, Any], observations: List[Dict[str, Any]]) -> Dict[str, Any]:
             filled = self._agentic_extract_json_object(
-                llm_service.chat(message=self._agentic_fill_args_prompt(user_input=message, tool=tool, args_schema=schema, recent_turns=recent_turns), conversation_history=None)
+                llm_service.chat(
+                    message=self._agentic_fill_args_prompt(
+                        user_input=message,
+                        tool=tool,
+                        args_schema=schema,
+                        recent_turns=recent_turns,
+                        observations=observations,
+                    ),
+                    conversation_history=None,
+                )
             )
             return filled.get("args") if isinstance(filled.get("args"), dict) else {}
 
@@ -651,9 +672,18 @@ class Orchestrator:
 
                 executor = self._agentic_executor()
 
-                def fill_args(tool: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+                def fill_args(tool: str, schema: Dict[str, Any], observations: List[Dict[str, Any]]) -> Dict[str, Any]:
                     filled = self._agentic_extract_json_object(
-                        llm_service.chat(message=self._agentic_fill_args_prompt(user_input=message, tool=tool, args_schema=schema, recent_turns=recent_turns), conversation_history=None)
+                        llm_service.chat(
+                            message=self._agentic_fill_args_prompt(
+                                user_input=message,
+                                tool=tool,
+                                args_schema=schema,
+                                recent_turns=recent_turns,
+                                observations=observations,
+                            ),
+                            conversation_history=None,
+                        )
                     )
                     return filled.get("args") if isinstance(filled.get("args"), dict) else {}
 

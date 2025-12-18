@@ -10,15 +10,70 @@ app = FastAPI(title="RAG Service (Qdrant)", version="1.0.0")
 
 qdrant = QdrantUtils()
 
+def _repo_root() -> Path:
+    # repo root: .../code/backend/rag-service -> .../edu-agentic-rag
+    return Path(__file__).resolve().parents[3]
+
+
+def _normalize_source(p: Path) -> str:
+    """
+    Prefer stable, repo-relative paths for citations.
+    """
+    try:
+        return str(p.resolve().relative_to(_repo_root().resolve()))
+    except Exception:
+        return str(p)
+
+
+def _build_chunks(*, docs_root: Path, max_files: int) -> tuple[list[dict[str, Any]], list[Path]]:
+    chunks: List[Dict[str, Any]] = []
+    files = list(iter_docs_files(docs_root))
+    files = files[:max_files]
+    for fp in files:
+        text = fp.read_text(encoding="utf-8", errors="ignore")
+        for part in TextUtils.chunk_text(text):
+            chunks.append(
+                {
+                    "id": uuid.uuid4().hex,
+                    "text": part,
+                    "source": _normalize_source(fp),
+                    "meta": {},
+                }
+            )
+    return chunks, files
+
+
+def _maybe_auto_index(*, min_points: int = 20, max_files: int = 200) -> dict[str, Any]:
+    """
+    Ensure the collection has some data.
+    If it's empty, auto-index repo docs/ once (best-effort).
+    """
+    count = qdrant.count_points()
+    if count >= min_points:
+        return {"auto_indexed": False, "points": count}
+
+    repo_root = _repo_root()
+    docs_root = repo_root / "docs"
+    if not docs_root.exists():
+        return {"auto_indexed": False, "points": count, "warning": f"docs_root not found: {docs_root}"}
+
+    chunks, files = _build_chunks(docs_root=docs_root, max_files=max_files)
+    if chunks:
+        qdrant.upsert_chunks(chunks)
+    return {"auto_indexed": True, "points": qdrant.count_points(), "indexed_files": len(files), "indexed_chunks": len(chunks)}
+
 
 class QueryRequest(BaseModel):
     query: str
     top_k: int = 5
+    auto_index: bool = True
+    snippet_chars: int = 1200
 
 
 class IndexRequest(BaseModel):
     docs_root: Optional[str] = None  # default: repo docs/
     max_files: int = 200
+    recreate: bool = False
 
 
 @app.get("/health")
@@ -54,22 +109,30 @@ async def health():
 @app.post("/rag/query")
 async def rag_query(req: QueryRequest):
     try:
+        auto = {"auto_indexed": False}
+        if req.auto_index:
+            try:
+                auto = _maybe_auto_index()
+            except Exception:
+                auto = {"auto_indexed": False, "warning": "auto_index failed"}
+
         hits = qdrant.search(req.query, top_k=req.top_k)
         # Format for display
         out = []
         for h in hits:
             payload = h.get("payload") or {}
             text = payload.get("text", "")
-            if isinstance(text, str) and len(text) > 400:
-                text = text[:400] + "..."
+            if isinstance(text, str) and len(text) > int(req.snippet_chars):
+                text = text[: int(req.snippet_chars)] + "..."
             out.append(
                 {
+                    "id": h.get("id"),
                     "score": h.get("score", 0.0),
                     "source": payload.get("source", ""),
                     "text": text,
                 }
             )
-        return {"query": req.query, "hits": out}
+        return {"query": req.query, "hits": out, "meta": {"collection": qdrant.collection, **auto}}
     except Exception as e:
         msg = str(e)
         # Common local-dev failure modes
@@ -94,27 +157,19 @@ async def rag_query(req: QueryRequest):
 
 @app.post("/rag/index/docs")
 async def index_docs(req: IndexRequest):
-    # repo root: .../code/backend/rag-service -> .../edu-agentic-rag
-    repo_root = Path(__file__).resolve().parents[3]
+    repo_root = _repo_root()
     default_docs = repo_root / "docs"
     docs_root = Path(req.docs_root) if req.docs_root else default_docs
     if not docs_root.exists():
         raise HTTPException(status_code=400, detail=f"docs_root not found: {docs_root}")
 
-    chunks: List[Dict[str, Any]] = []
-    files = list(iter_docs_files(docs_root))
-    files = files[: req.max_files]
-    for fp in files:
-        text = fp.read_text(encoding="utf-8", errors="ignore")
-        for part in TextUtils.chunk_text(text):
-            chunks.append(
-                {
-                    "id": uuid.uuid4().hex,
-                    "text": part,
-                    "source": str(fp),
-                    "meta": {},
-                }
-            )
+    if req.recreate:
+        try:
+            qdrant.recreate_collection()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"failed to recreate collection: {e}")
+
+    chunks, files = _build_chunks(docs_root=docs_root, max_files=req.max_files)
 
     if not chunks:
         return {"indexed_files": 0, "indexed_chunks": 0}

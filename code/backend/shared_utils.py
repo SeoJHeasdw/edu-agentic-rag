@@ -130,6 +130,32 @@ class QdrantUtils:
             vectors_config=qmodels.VectorParams(size=self.vector_size, distance=qmodels.Distance.COSINE),
         )
 
+    def count_points(self) -> int:
+        """
+        Returns number of points in the collection.
+        Ensures the collection exists first.
+        """
+        self.ensure_collection()
+        try:
+            res = self.client().count(collection_name=self.collection, exact=True)
+            return int(getattr(res, "count", 0) or 0)
+        except Exception:
+            return 0
+
+    def recreate_collection(self) -> None:
+        """
+        Drops and recreates the collection.
+        """
+        c = self.client()
+        try:
+            c.delete_collection(collection_name=self.collection)
+        except Exception:
+            pass
+        c.create_collection(
+            collection_name=self.collection,
+            vectors_config=qmodels.VectorParams(size=self.vector_size, distance=qmodels.Distance.COSINE),
+        )
+
     def upsert_chunks(self, chunks: List[Dict[str, Any]]) -> None:
         """
         chunks item schema:

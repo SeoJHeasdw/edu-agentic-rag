@@ -79,10 +79,8 @@ AZURE_OPENAI_ENDPOINT=https://your-resource-name.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2024-12-01-preview
 AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
 
-# Azure Embedding (향후 사용)
-AZURE_EMBEDDING_DEPLOYMENT=oss-embedding
-AZURE_EMBEDDING_MODEL=text-embedding-3-large
-AZURE_EMBEDDING_SMALL_MODEL=oss-embedding-small
+# Azure Embedding (rag-service에서 사용)
+AZURE_EMBEDDING_DEPLOYMENT_NAME=your_embedding_deployment_name
 ```
 
 ### 4. LLM 제공자 선택
@@ -213,7 +211,7 @@ CORS 설정은 `config.yml`의 `server.cors_origins`에서 관리됩니다.
 
 ### 새로운 LLM 제공자 추가
 
-1. `app/services/llm_service.py`에 새로운 제공자 로직 추가
-2. `app/config.py`에 설정 추가
+1. `services/llm_service.py`에 새로운 제공자 로직 추가
+2. `config.py`에 설정 추가
 3. `config.yml`에 설정 항목 추가
 

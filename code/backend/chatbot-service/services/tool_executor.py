@@ -130,7 +130,7 @@ class ToolExecutor:
         user_input: str,
         session_id: str,
         tasks: List[Dict[str, Any]],
-        fill_args_fn,  # callable(tool:str, schema:dict)->dict(args)
+        fill_args_fn,  # callable(tool:str, schema:dict, observations:list[dict])->dict(args)
         replan_fn=None,  # callable(tasks, observations)->new_tasks
         max_replans: int = 2,
     ) -> Tuple[List[Dict[str, Any]], List[str], List[Dict[str, Any]]]:
@@ -151,7 +151,7 @@ class ToolExecutor:
 
                 if tool and tool != "none":
                     if not args:
-                        args = fill_args_fn(tool, self.tool_schema(tool)) or {}
+                        args = fill_args_fn(tool, self.tool_schema(tool), list(observations)) or {}
 
                     cache_key = context_manager.make_cache_key(tool, args)
                     ttl = self.tool_ttl(tool)

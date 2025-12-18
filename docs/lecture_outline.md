@@ -4,19 +4,21 @@
 
 ※ 픽스된 상태는 아니며, MCP 등도 고려하고 있습니다.
 
-Chapter 1 : RAG & Agent 기초 이해 (50-60분)
- - RAG(Retrieval-Augmented Generation)의 개념과 실무 활용 사례
- - AI Agent의 정의, 자율성, 그리고 의사결정 메커니즘
- - 기존 RAG의 한계점과 Agentic RAG의 필요성
- - LLM의 제약사항과 외부 지식 활용의 중요성
+Chapter 1 : LLM 한계 → 청킹 → RAG → 벡터 → RAG 구조 (50-60분)
+ - 실전 사례로 “왜 RAG가 필요한지” 먼저 감 잡기 (예: Perplexity의 출처 기반 답변, Cursor의 코드베이스 맥락, Claude Projects의 프로젝트 지식)
+ - LLM을 실무에 붙일 때 터지는 4가지 한계(환각/최신성/긴 문맥/컨텍스트 윈도우)
+ - 컨텍스트 윈도우 제한의 1차 해법: 청킹(전략/오버랩/튜닝 관점, 정답 없음)
+ - RAG의 한 줄 정의 + 파이프라인(검색→컨텍스트→생성) + “이 교육이 Agentic RAG까지 가는 로드맵” 소개
+ - 임베딩/검색을 이해하기 위한 벡터 기초(희소/밀집, 언제 무엇이 강한가)
+ - RAG 시스템의 구조(인덱싱 vs 검색·생성)로 “본격 구현” 준비
 
-Chapter 2 : 기본 RAG 시스템 구현 (20-30분)
+Chapter 2 : 기본 RAG 시스템 이해 및 구현 (20-30분)
  - Vector DB(Qdrant)를 활용한 문서 임베딩(OpenAI에서 제공하는 text-embedding-3-small 모델) 및 검색 (코드 리뷰)
  - 기본 RAG 파이프라인 구현 및 실행 시연
 
-Chapter 3 : Agentic RAG로의 전환 (20-25분)
- - Tool-using Agent 설계 패턴
- - ReAct (Reasoning + Acting) 패러다임
+Chapter 3 : RAG 고급 기법 + Agentic RAG로의 전환 (20-25분)
+ - 고급 검색 기법(하이브리드/리랭킹/멀티홉)으로 “기본 RAG를 더 정확하게”
+ - Agentic RAG 전환: AI 에이전트 개념 → Tool-using 패턴 → ReAct
  - Multi-Agent 협업 아키텍처 개요
 
 Chapter 4 : Agentic RAG 실전 구현 (35-40분)

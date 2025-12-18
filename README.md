@@ -71,11 +71,13 @@ cd code/backend/chatbot-service
 pip install -r requirements.txt
 
 # 환경 변수 설정 (.env 파일 생성)
+cd ../
 cp .env.example .env
 # .env 파일을 편집하여 API 키 설정
 
 # 개발 서버 실행
-python -m uvicorn app.main:app --reload
+cd chatbot-service
+python -m uvicorn main:app --reload
 ```
 
 백엔드는 `http://localhost:8000`에서 실행됩니다.
@@ -144,8 +146,6 @@ python -m uvicorn app.main:app --reload
 
 ## 📚 참고 자료
 
-- [LangChain 공식 문서](https://python.langchain.com/)
-- [LlamaIndex 공식 문서](https://www.llamaindex.ai/)
 - [Vue 3 공식 문서](https://vuejs.org/)
 
 ## 🤝 기여
