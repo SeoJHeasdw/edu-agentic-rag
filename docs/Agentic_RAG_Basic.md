@@ -1,4 +1,79 @@
+# 목차
+
+- [Chapter 1: LLM 한계에서 RAG·Agentic까지 (기초)](#chapter-1)
+  - [1.0 RAG가 이미 쓰이는 곳 : 실전 사례로 먼저 감 잡기](#sec-1-0)
+  - [1.1 LLM을 실무에 붙일 때 터지는 4가지 한계](#sec-1-1)
+  - [1.2 청킹(Chunking) 전략: 컨텍스트 윈도우 제한을 “검색 가능한 형태”로 바꾸기](#sec-1-2)
+    - [1.2.1 청킹 한 줄 정의](#sec-1-2-1)
+    - [1.2.2 청킹의 목적](#sec-1-2-2)
+    - [1.2.3 감 잡는 기본값(실무 출발점)](#sec-1-2-3)
+    - [1.2.4 주요 청킹 전략(3가지)](#sec-1-2-4)
+    - [1.2.5 청킹 전략을 고르는 기준(실무 체크리스트)](#sec-1-2-5)
+    - [1.2.6 실제 프로젝트에서의 접근법(실험 기반)](#sec-1-2-6)
+    - [1.2.7 실전 팁(바로 적용 가능한 가이드)](#sec-1-2-7)
+  - [1.3 RAG: 정의, 파이프라인, 그리고 Agentic RAG로의 로드맵](#sec-1-3)
+    - [1.3.1 RAG 한 줄 정의](#sec-1-3-1)
+    - [1.3.2 RAG의 기본 흐름(한 줄 요약)](#sec-1-3-2)
+    - [1.3.3 왜 Agentic RAG로 넘어가나요?](#sec-1-3-3)
+    - [1.3.4 RAG Pipeline (전체 그림) — 앞으로 우리가 만들 흐름](#sec-1-3-4)
+  - [1.4 텍스트를 숫자로 : 벡터 표현의 이해](#sec-1-4)
+  - [1.5 RAG 시스템의 구조와 작동 원리](#sec-1-5)
+  - [2.2 RAG가 해결하는 LLM의 핵심 문제점](#sec-2-2)
+    - [실전 활용 예시: 기업 내부 문서 Q&A 시스템](#sec-2-2-example)
+  - [2.3 LangChain 프레임워크: RAG 구현을 “빠르게” 돕는 도구(장단점 포함)](#sec-2-3)
+    - [2.3.1 LangChain이란?](#sec-2-3-1)
+    - [2.3.2 LangChain이 해결하는 문제](#sec-2-3-2)
+    - [2.3.3 순수 구현 vs LangChain 비교](#sec-2-3-3)
+    - [2.3.4 LangChain의 장점과 한계](#sec-2-3-4)
+    - [2.3.5 실무 의사결정 가이드](#sec-2-3-5)
+- [Chapter 3: RAG 고급 기법과 Agentic RAG로의 전환](#chapter-3)
+  - [3.1 RAG 검색 최적화 기법: 정확도를 높이는 고급 전략](#sec-3-1)
+    - [3.1.1 하이브리드 검색 (Hybrid Search): 의미와 키워드의 조화](#sec-3-1-1)
+    - [3.1.2 Re-ranking (재정렬): 2단계 정밀 검색](#sec-3-1-2)
+    - [3.1.3 Multi-hop Reasoning (다단계 추론): 복잡한 질문 해결](#sec-3-1-3)
+  - [3.2 Agentic RAG로의 전환: 정적 파이프라인을 넘어서](#sec-3-2)
+    - [3.2.1 AI 에이전트 : 스스로 일하는 '디지털 비서'](#sec-3-2-1)
+    - [3.2.2 기존 RAG의 한계와 Agentic RAG의 필요성](#sec-3-2-2)
+    - [3.2.3 Tool-using Agent 설계 패턴](#sec-3-2-3)
+    - [3.2.4 기존 RAG vs Agentic RAG 비교 (최종 정리)](#sec-3-2-4)
+  - [3.3 Multi-Agent: '어벤져스 팀'처럼 협력하는 AI들](#sec-3-3)
+    - [멀티 에이전트 시스템의 아키텍처](#sec-3-3-arch)
+    - [멀티 에이전트의 장점과 과제](#sec-3-3-pros-cons)
+  - [3.4 Master Agent vs Specialized Agents](#sec-3-4)
+  - [3.5 Function Calling 구현 패턴](#sec-3-5)
+  - [3.6 프롬프트 엔지니어링 실전](#sec-3-6)
+- [Chapter 4: Agentic RAG 실전 구현 (코드 중심)](#chapter-4)
+  - [4.1 구현 아키텍처 개요](#sec-4-1)
+    - [시스템 구성도](#sec-4-1-diagram)
+    - [핵심 컴포넌트](#sec-4-1-components)
+  - [4.2 각 에이전트 상세 분석](#sec-4-2)
+    - [4.2.1 ChatService (Master Agent) (`services/chat_service.py`)](#sec-4-2-1)
+    - [4.2.2 IntentClassifier Agent (`agents/intent_classifier.py`)](#sec-4-2-2)
+    - [4.2.3 TaskPlannerAgent (`agents/task_planner_agent.py`)](#sec-4-2-3)
+    - [4.2.4 ToolExecutor (`services/tool_executor.py`)](#sec-4-2-4)
+  - [4.3 Multi-Agent 실행 흐름 Deep Dive](#sec-4-3)
+    - [Step 1: IntentClassifier (의도 분류)](#sec-4-3-step-1)
+    - [Step 2: TaskPlannerAgent (계획 수립)](#sec-4-3-step-2)
+    - [Step 3: ToolExecutor (실행 및 관찰)](#sec-4-3-step-3)
+    - [Step 4: ChatService (최종 답변 종합)](#sec-4-3-step-4)
+    - [핵심 인사이트](#sec-4-3-insights)
+  - [4.4 코드 리뷰: 주요 구현 포인트](#sec-4-4)
+    - [4.4.1 벡터 DB 연결 및 RAG 도구 구성](#sec-4-4-1)
+    - [4.4.2 에이전트 생성 및 실행](#sec-4-4-2)
+- [Chapter 5: 실전 활용 및 최적화](#chapter-5)
+  - [5.1 성능 최적화 전략](#sec-5-1)
+    - [5.1.1 LLM 토큰 비용 관리](#sec-5-1-1)
+    - [5.1.2 응답 속도 향상](#sec-5-1-2)
+    - [5.1.3 검색 품질 개선](#sec-5-1-3)
+    - [추천 리소스](#sec-5-1-resources)
+
+---
+
+<a id="chapter-1"></a>
+
 # Chapter 1: LLM 한계에서 RAG·Agentic까지 (기초)
+
+<a id="sec-1-0"></a>
 
 ## 1.0 RAG가 이미 쓰이는 곳 : 실전 사례로 먼저 감 잡기
 
@@ -24,6 +99,8 @@ RAG는 “이론”이 아니라, 이미 많은 제품/서비스에서 **사용�
 > 한 줄 정리: RAG는 “답변 능력”을 키우는 게 아니라, 답변의 **근거와 최신성**을 확보하는 쪽에 가깝습니다.
 
 ---
+
+<a id="sec-1-1"></a>
 
 ## 1.1 LLM을 실무에 붙일 때 터지는 4가지 한계
 
@@ -109,6 +186,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
   - 대화형 RAG에서는 **(1) 어떤 대화 이력을 유지/삭제할지**, **(2) 길어지면 어떻게 요약할지**, **(3) 사용자별 상태(세션/메모리)를 어디에 저장할지**가 품질과 비용을 좌우합니다.
   - Agentic RAG에서는 여기에 더해 **도구 호출 결과/중간 결론(작업 메모)**까지 상태로 관리하고, 검색도 “현재 질문”뿐 아니라 **대화 맥락을 반영해 쿼리를 재작성/확장**하는 흐름을 고려합니다.
 
+<a id="sec-1-2"></a>
+
 ## 1.2 청킹(Chunking) 전략: 컨텍스트 윈도우 제한을 “검색 가능한 형태”로 바꾸기
 
 컨텍스트 윈도우에는 물리적인 한계가 있으니, 10페이지짜리 문서를 **그대로 통째로** LLM에게 던지면 보통 이런 문제가 생깁니다.
@@ -119,15 +198,21 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 
 그래서 RAG는 문서를 그대로 “읽히게” 하는 게 아니라, 문서를 “찾아 쓸 수 있게” 바꾸는 전처리부터 시작합니다. 그 핵심이 **청킹(Chunking)**입니다.
 
+<a id="sec-1-2-1"></a>
+
 ### 1.2.1 청킹 한 줄 정의
 
 - 긴 문서를 LLM이 다루기 좋은 크기의 텍스트 조각(Chunk)으로 나누고, 각 조각에 **출처/위치/제목 같은 메타데이터**를 붙여서 나중에 **검색 → 인용 → 근거 제시**가 가능하게 만드는 전처리입니다.
+
+<a id="sec-1-2-2"></a>
 
 ### 1.2.2 청킹의 목적
 
 - **검색 품질**: “질문에 답이 들어있는 부분”이 한 덩어리로 잡히도록
 - **컨텍스트 효율**: 필요한 조각만 넣어서 토큰을 아끼도록
 - **인용 가능성**: 출처/페이지/섹션을 붙여서 나중에 “어디 근거냐?”를 말할 수 있도록
+
+<a id="sec-1-2-3"></a>
 
 ### 1.2.3 감 잡는 기본값(실무 출발점)
 
@@ -142,6 +227,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 청크 2:              [문장C 문장D 문장E]
                      ↑ 오버랩 영역
 ```
+
+<a id="sec-1-2-4"></a>
 
 ### 1.2.4 주요 청킹 전략(3가지)
 
@@ -158,6 +245,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
   - 임베딩 모델을 사용하여 의미적으로 유사한 문장들을 하나의 청크로 묶음
   - 가장 진보된 방식 (다만 비용/복잡도 증가)
 
+<a id="sec-1-2-5"></a>
+
 ### 1.2.5 청킹 전략을 고르는 기준(실무 체크리스트)
 
 청킹은 “어떤 알고리즘이 더 좋아?”의 문제가 아니라, **우리 데이터/질문/비용 제약**에 맞춰 의사결정하는 문제입니다. 아래 기준으로 먼저 상황을 정리하세요.
@@ -172,12 +261,16 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 
 > 핵심 메시지: 청킹은 “길이를 줄이는 트릭”이 아니라, 문서를 **검색/인용 가능한 구조**로 바꾸는 설계입니다.
 
+<a id="sec-1-2-6"></a>
+
 ### 1.2.6 실제 프로젝트에서의 접근법(실험 기반)
 
 - **1단계**: 데이터 샘플링으로 문서 특성(헤딩/표/반복 문구/용어)을 파악
 - **2단계**: 여러 청킹 전략으로 A/B 테스트(예: Fixed vs Recursive, Overlap 유/무)
 - **3단계**: 검색 품질과 비용(지연/저장/인덱싱 시간)을 **같이** 평가
 - **4단계**: 지속적인 모니터링과 개선(로그/피드백 기반)
+
+<a id="sec-1-2-7"></a>
 
 ### 1.2.7 실전 팁(바로 적용 가능한 가이드)
 
@@ -221,12 +314,18 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 > 따라서 Fixed/Recursive/Semantic 중 하나를 고르는 문제가 아니라, **우리 문서와 질문 패턴에 맞춰** 크기·오버랩·분할 기준을 **복합적으로, 전략적으로 설계/튜닝**하는 문제에 가깝습니다.
 
 
+<a id="sec-1-3"></a>
+
 ## 1.3 RAG: 정의, 파이프라인, 그리고 Agentic RAG로의 로드맵
+
+<a id="sec-1-3-1"></a>
 
 ### 1.3.1 RAG 한 줄 정의
 
 - LLM이 답변을 만들기 전에, **외부 지식(문서/DB/위키/사내 매뉴얼 등)에서 관련 정보를 검색(Retrieval)**하고 그 내용을 **근거로 답변을 생성(Generation)**하는 방식
 - 핵심은 “모델이 혼자 기억으로 말하게 두지 말고, **근거를 가져오게 만들자(grounding)**” 입니다.
+
+<a id="sec-1-3-2"></a>
 
 ### 1.3.2 RAG의 기본 흐름(한 줄 요약)
 
@@ -243,6 +342,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 >
 > ※ RAG도 완벽한 해결책은 아니며, 검색 품질과 지식베이스 관리가 핵심입니다
 
+<a id="sec-1-3-3"></a>
+
 ### 1.3.3 왜 Agentic RAG로 넘어가나요?
 
 - 기본 RAG는 보통 “한 번 검색 → 한 번 답변” 흐름이 많습니다.
@@ -251,6 +352,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
   - 검색 결과가 부족하면 **검색 전략을 바꿔 재검색하기**
   - 답변 전에 **검증/비교/계산/도구 호출** 같은 작업을 단계적으로 수행하기
 - 이때 “다음 행동을 스스로 선택하고 실행”하는 구조가 **Agent(에이전트)**이고, 그 확장된 형태가 **Agentic RAG**입니다.
+
+<a id="sec-1-3-4"></a>
 
 ### 1.3.4 RAG Pipeline (전체 그림) — 앞으로 우리가 만들 흐름
 
@@ -265,6 +368,8 @@ LLM은 똑똑해 보이지만 **근거 없이도 그럴듯하게 말할 수 있�
 > 이 교육은 여기서 끝나지 않습니다. 기본 RAG를 “정확하게” 구현한 다음, 다음 Chapter들에서 **고급 검색(성능 개선)**을 다루고 마지막에는 **Agentic RAG(스스로 계획·도구 선택·재검색/검증)**까지 단계적으로 확장해 나갑니다.
 
 ---
+
+<a id="sec-1-4"></a>
 
 ## 1.4 텍스트를 숫자로 : 벡터 표현의 이해
 
@@ -382,6 +487,8 @@ LLM이 텍스트를 처리하려면 먼저 **숫자(벡터)**로 변환해야 �
 
 ---
 
+<a id="sec-1-5"></a>
+
 ## 1.5 RAG 시스템의 구조와 작동 원리
 
 앞 절에서 본 “벡터로 바꾸고 유사도를 계산한다”는 아이디어를 실제 서비스로 만들면, 보통 **(1) 문서를 미리 준비하는 단계**와 **(2) 질문이 들어왔을 때 찾아서 답하는 단계**로 나뉩니다.
@@ -467,6 +574,8 @@ RAG 시스템은 크게 **지식 준비**와 **검색 및 생성(Retrieval & Gen
 
 ---
 
+<a id="sec-2-2"></a>
+
 ## 2.2 RAG가 해결하는 LLM의 핵심 문제점
 
 RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의 근본적인 한계를 구조적으로 해결하는 아키텍처입니다.
@@ -479,6 +588,8 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
 | **도메인 전문성 부족** | 도메인 문서만 확보하면 별도 파인튜닝 없이 전문성 확보 | 비용 절감 (파인튜닝 대비 10~100배), 빠른 배포 |
 | **긴 입력의 Attention Decay** | 관련 부분만 선별하여 컨텍스트 최소화 | 답변 품질 향상, 토큰 비용 절감 |
 | **개인화 어려움** | 사용자별 문서/대화 이력 저장으로 개인화 | 고객 맞춤형 서비스, 사용자 경험 향상 |
+
+<a id="sec-2-2-example"></a>
 
 ### 실전 활용 예시: 기업 내부 문서 Q&A 시스템
 
@@ -498,7 +609,11 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
 
 ---
 
+<a id="sec-2-3"></a>
+
 ## 2.3 LangChain 프레임워크: RAG 구현을 “빠르게” 돕는 도구(장단점 포함)
+
+<a id="sec-2-3-1"></a>
 
 ### 2.3.1 LangChain이란?
 
@@ -516,6 +631,8 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
     *   ConversationBufferMemory, ConversationSummaryMemory 등
 *   **에이전트 (Agent):** 도구를 자율적으로 선택하고 실행하는 지능형 시스템
     *   Chapter 3~4에서 본격적으로 학습합니다.
+
+<a id="sec-2-3-2"></a>
 
 ### 2.3.2 LangChain이 해결하는 문제
 
@@ -542,6 +659,8 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
         answer = chain.invoke("RAG란 무엇인가?")
         ```
 
+<a id="sec-2-3-3"></a>
+
 ### 2.3.3 순수 구현 vs LangChain 비교
 
 | 비교 항목 | 순수 구현 (Pure Python) | LangChain |
@@ -555,6 +674,8 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
 | **유지보수** | 직접 관리 필요 | 프레임워크/통합 모듈 업데이트에 영향을 받음(좋을 수도, 깨질 수도) |
 | **성능 최적화** | 완전한 제어 가능 | 프레임워크 최적화에 의존 (일부 오버헤드 존재) |
 | **코드 라인 수** | 많음 (~600줄) | 적음 (~100줄) |
+
+<a id="sec-2-3-4"></a>
 
 ### 2.3.4 LangChain의 장점과 한계
 
@@ -616,6 +737,8 @@ RAG는 단순히 '외부 지식 추가' 이상의 의미를 가집니다. LLM의
         # 어떤 것을 언제 써야 할지 혼란
         ```
 
+<a id="sec-2-3-5"></a>
+
 ### 2.3.5 실무 의사결정 가이드
 
 | 상황 | 권장 방식 |
@@ -642,11 +765,17 @@ Chapter 3에서는 RAG를 더 똑똑하게 만드는 **고급 검색 기법**(�
 
 ---
 
+<a id="chapter-3"></a>
+
 # Chapter 3: RAG 고급 기법과 Agentic RAG로의 전환
+
+<a id="sec-3-1"></a>
 
 ## 3.1 RAG 검색 최적화 기법: 정확도를 높이는 고급 전략
 
 기본 RAG(Chapter 2)는 단순히 벡터 유사도로 문서를 검색합니다. 하지만 실무에서는 더 정교한 검색 전략이 필요합니다. 이 섹션에서는 검색 품질을 획기적으로 향상시키는 3가지 핵심 기법을 다룹니다.
+
+<a id="sec-3-1-1"></a>
 
 ### 3.1.1 하이브리드 검색 (Hybrid Search): 의미와 키워드의 조화
 
@@ -739,6 +868,8 @@ results = ensemble_retriever.invoke("RAG 시스템 성능 개선 방법")
 ```
 
 ---
+
+<a id="sec-3-1-2"></a>
 
 ### 3.1.2 Re-ranking (재정렬): 2단계 정밀 검색
 
@@ -855,6 +986,8 @@ results = compression_retriever.invoke("딥러닝 학습 방법")
 | **bge-reranker-large** | 오픈소스 (BAAI) | 무료, 로컬 실행 가능 | 무료 (GPU 필요) |
 
 ---
+
+<a id="sec-3-1-3"></a>
 
 ### 3.1.3 Multi-hop Reasoning (다단계 추론): 복잡한 질문 해결
 
@@ -991,10 +1124,14 @@ class MultiHopRAG:
 
 ---
 
+<a id="sec-3-2"></a>
+
 ## 3.2 Agentic RAG로의 전환: 정적 파이프라인을 넘어서
 
 RAG가 답변을 **정확하게(grounded)** 만든다면, **Agentic RAG**는 답변 과정을 **능동적으로(스스로 다음 행동을 선택)** 만듭니다.  
 즉, “검색→생성” 한 번으로 끝나는 정적 파이프라인을 넘어, 필요하면 **되묻고 / 재검색하고 / 비교·검증하고 / 도구를 호출**하며 목표를 달성하는 방식입니다.
+
+<a id="sec-3-2-1"></a>
 
 ### 3.2.1 AI 에이전트 : 스스로 일하는 '디지털 비서'
 
@@ -1162,6 +1299,8 @@ AI 에이전트는 특정 목표를 달성하기 위해 자율적으로 행동�
 
 ---
 
+<a id="sec-3-2-2"></a>
+
 ### 3.2.2 기존 RAG의 한계와 Agentic RAG의 필요성
 
 **기존 RAG (Static Pipeline)**의 한계:
@@ -1204,6 +1343,8 @@ AI 에이전트는 특정 목표를 달성하기 위해 자율적으로 행동�
    - 수집된 3개 정보를 통합하여 비교 분석
    - 최종 답변 생성: "우리 회사 매출 15% 증가, 경쟁사 평균 8% 증가..."
 ```
+
+<a id="sec-3-2-3"></a>
 
 ### 3.2.3 Tool-using Agent 설계 패턴
 
@@ -1328,6 +1469,8 @@ Thought: {agent_scratchpad}
 agent = create_react_agent(llm, tools, react_prompt)
 ```
 
+<a id="sec-3-2-4"></a>
+
 ### 3.2.4 기존 RAG vs Agentic RAG 비교 (최종 정리)
 
 | 비교 항목 | 기존 RAG | Agentic RAG |
@@ -1343,6 +1486,8 @@ agent = create_react_agent(llm, tools, react_prompt)
 | **적합한 사용처** | 단순 문서 검색, FAQ | 복잡한 분석, 실시간 정보 통합 |
 
 ---
+
+<a id="sec-3-3"></a>
 
 ## 3.3 Multi-Agent: '어벤져스 팀'처럼 협력하는 AI들
 
@@ -1392,6 +1537,8 @@ agent = create_react_agent(llm, tools, react_prompt)
 | 비용/시간 제약 있음        | ✓ LLM 호출 1회             | ✗ 여러 에이전트 호출로 비싸고 느림 | 단일           |
 
 
+<a id="sec-3-3-arch"></a>
+
 ### 멀티 에이전트 시스템의 아키텍처
 
 1.  **에이전트 오케스트레이터 (Agent Orchestrator / Router):**
@@ -1404,6 +1551,8 @@ agent = create_react_agent(llm, tools, react_prompt)
         *   **'블랙 위도우' (시장 반응 분석 에이전트):** 소셜 미디어, 뉴스 기사 등 여론 분석.
         *   **'닥터 스트레인지' (보고서 작성 에이전트):** 여러 정보를 종합하여 보고서 작성.
 
+<a id="sec-3-3-pros-cons"></a>
+
 ### 멀티 에이전트의 장점과 과제
 
 *   **장점:**
@@ -1415,13 +1564,347 @@ agent = create_react_agent(llm, tools, react_prompt)
     *   **통신 오버헤드:** 에이전트 간의 통신 비용이 성능에 영향을 줄 수 있습니다.
     *   **오류 전파:** 한 에이전트의 실패가 다른 에이전트나 전체 시스템에 영향을 미칠 수 있습니다.
 
+<a id="sec-3-4"></a>
+
+### 3.4 Master Agent vs Specialized Agents
+
+Multi-Agent 시스템에서 핵심은 **역할 분담**입니다. 마치 오케스트라에서 지휘자와 연주자들의 관계처럼, **Master Agent**가 전체를 조율하고 **Specialized Agents**가 각자의 전문 분야를 담당합니다.
+
+#### Master Agent의 역할
+
+```python
+# ChatService (services/chat_service.py:118) - Master Agent 역할
+class ChatService:
+    async def handle(self, message: str, conversation_id: Optional[str] = None):
+        # 1. 모드 결정 (룰 기반 vs 에이전트 기반)
+        if llm_service.is_enabled():
+            return await self._agentic_run(message, session_id)  # 에이전트 파이프라인
+        else:
+            return await self._rule_based_run(message, session_id)  # 룰 기반 폴백
+            
+    async def _agentic_run(self, message: str, session_id: str):
+        # 2. Specialized Agents 순차 실행 및 조율
+        analysis = IntentClassifier(llm_chat_fn=llm_service.chat).analyze_intent(message)
+        plan = TaskPlannerAgent(llm_chat_fn=llm_service.chat).plan(message, analysis)
+        observations = await ToolExecutor().execute_plan(plan, fill_args_fn, replan_fn)
+        
+        # 3. 최종 답변 생성 및 후처리
+        final_answer = llm_service.chat(self._final_answer_prompt(observations))
+        return self._postprocess_answer(final_answer, observations)
+```
+
+**Master Agent의 책임:**
+- 🎯 **전략 결정**: 어떤 방식으로 처리할지 (룰 vs 에이전트)
+- 🔀 **워크플로 조율**: Specialized Agents 실행 순서 관리
+- 🔄 **오류 복구**: 한 에이전트 실패 시 대체 전략 실행
+- 📝 **결과 통합**: 각 에이전트 결과를 최종 답변으로 조합
+
+#### Specialized Agents의 역할
+
+| **에이전트** | **전문 분야** | **입력** | **출력** |
+|-------------|-------------|---------|----------|
+| **IntentClassifier** | 의도 분류 & 라우팅 | 자연어 쿼리 | `{"intent": "weather_query", "apis": ["weather", "notification"]}` |
+| **TaskPlannerAgent** | 계획 수립 & 재계획 | 의도 + API 후보 | `{"tasks": [{"id": "t1", "tool": "weather.forecast", "depends_on": []}]}` |
+| **ToolExecutor** | 실행 & 최적화 | 태스크 그래프 | `{"observations": [...], "used_tools": [...]}` |
+
+**각 에이전트의 특징:**
+- ✅ **단일 책임**: 각자 하나의 전문 분야만 담당
+- 🔄 **재사용 가능**: 다른 시스템에서도 활용 가능
+- 🧪 **테스트 용이**: 독립적으로 테스트 가능
+- 📈 **확장 가능**: 새 에이전트 추가 시 기존 에이전트 영향 없음
+
+#### 실제 협업 예시
+
+```python
+# "다음 주 날씨 예보를 파일로 만들어서 팀에게 공유해줘"
+
+# 1. Master Agent: 전체 흐름 시작
+chat_service = ChatService()
+
+# 2. IntentClassifier: 의도 분석
+intent_result = {
+    "intent": "weather_query",
+    "apis": ["weather", "file", "notification"],  # 복합 요청 감지
+    "confidence": 0.85
+}
+
+# 3. TaskPlannerAgent: 실행 계획 수립  
+plan_result = {
+    "tasks": [
+        {"id": "t1", "tool": "weather.forecast", "args": {"city": "서울"}},
+        {"id": "t2", "tool": "file.create", "args": {"name": "weather_report.md"}, "depends_on": ["t1"]},
+        {"id": "t3", "tool": "notification.send", "args": {"message": "날씨 보고서"}, "depends_on": ["t2"]}
+    ]
+}
+
+# 4. ToolExecutor: 계획 실행
+execution_result = {
+    "observations": [
+        {"tool": "weather.forecast", "result": {"forecasts": [...]}},
+        {"tool": "file.create", "result": {"file_id": "report_123"}},
+        {"tool": "notification.send", "result": {"status": "sent", "id": "notif_456"}}
+    ],
+    "used_tools": ["weather.forecast", "file.create", "notification.send"]
+}
+
+# 5. Master Agent: 최종 답변 생성
+final_answer = "다음 주 서울 날씨 예보 보고서를 생성하고 팀에게 공유했습니다."
+```
+
+<a id="sec-3-5"></a>
+
+### 3.5 Function Calling 구현 패턴
+
+Function Calling은 **LLM이 외부 도구를 호출할 수 있게 하는 핵심 메커니즘**입니다. 우리 구현에서는 FastMCP의 `@mcp.tool` 역할을 `DEFAULT_TOOL_SPECS`가 담당합니다.
+
+#### Tool Registry 설계
+
+```python
+# services/tool_executor.py:21 - 우리의 "Function Calling 레지스트리"
+DEFAULT_TOOL_SPECS: List[Dict[str, Any]] = [
+    {
+        "name": "weather.forecast",
+        "description": "특정 도시의 일주일 날씨 예보를 조회한다.",
+        "args_schema": {"city": "string (e.g., 서울)"},
+        "ttl": 600  # 10분 캐시
+    },
+    {
+        "name": "file.create", 
+        "description": "새 파일을 생성한다.",
+        "args_schema": {"name": "string", "content": "string", "path": "string"},
+        "ttl": None  # 캐시 안함
+    },
+    # ... 19개 도구
+]
+
+def tools_prompt(tool_specs: Optional[List[Dict[str, Any]]] = None) -> str:
+    """LLM에게 보여줄 도구 목록 문자열 생성 (FastMCP tool list와 유사)"""
+    specs = tool_specs or DEFAULT_TOOL_SPECS
+    return "\n".join([
+        f"- {t['name']}: {t.get('description','')} | args={t.get('args_schema',{})}" 
+        for t in specs
+    ])
+```
+
+#### LLM-Tool 인터페이스 
+
+```python
+# TaskPlannerAgent가 도구 선택하는 과정
+def plan(self, *, user_input: str, intent: str, apis: List[str], recent_turns: List[Dict]):
+    prompt = f"""당신은 태스크 플래너 에이전트입니다.
+목표: 사용자 요청을 실행 가능한 서브태스크로 분해하세요.
+
+사용 가능한 도구:
+{self.tools_prompt}  # ← 19개 도구 목록
+
+반환 형식(키 고정):
+{{"tasks":[{{"id":"t1","text":"...","tool":"weather.get|file.create|notification.send|none","args":{{...}},"depends_on":["t0"],"produces":"짧게"}}], "final_step":"tN"}}
+
+사용자 요청: {user_input}"""
+    
+    return self.llm_chat_fn(prompt)  # LLM이 JSON 계획 생성
+```
+
+#### 인자 검증 및 보완
+
+```python
+# ToolExecutor에서 부족한 인자를 LLM이 자동 보완
+async def execute_plan(self, tasks: List[Dict], fill_args_fn, replan_fn):
+    for task in tasks:
+        tool = task.get("tool")
+        args = task.get("args") or {}
+        
+        # 인자가 부족하면 LLM에게 요청해서 채움
+        if not args:
+            args = fill_args_fn(tool, self.tool_schema(tool), observations) or {}
+        
+        # 도구 실행
+        try:
+            result = await self.call_tool(client, tool, args)
+            observations.append({"tool": tool, "args": args, "result": result})
+        except Exception as e:
+            # 실행 실패 시 재계획 트리거
+            if replan_fn:
+                new_tasks = replan_fn(current_tasks, observations)
+                if new_tasks:
+                    current_tasks = new_tasks  # 새 계획으로 교체
+```
+
+#### FastMCP vs 우리 구현 비교
+
+| **FastMCP** | **우리 구현** | **장점** |
+|-------------|---------------|----------|
+| `@mcp.tool` 데코레이터 | `DEFAULT_TOOL_SPECS` 리스트 | ✅ 명시적 스키마 정의 |
+| 자동 함수 등록 | 수동 레지스트리 관리 | ✅ 세밀한 제어 가능 |
+| MCP 프로토콜 | HTTP API 호출 | ✅ 마이크로서비스 호환 |
+| 프레임워크 의존 | 순수 구현 | ✅ 학습 목적에 최적 |
+
+<a id="sec-3-6"></a>
+
+### 3.6 프롬프트 엔지니어링 실전
+
+Agentic RAG에서 **프롬프트 엔지니어링**이 성공의 핵심입니다. 각 에이전트가 정확한 결과를 내기 위해서는 **명확하고 구조화된 프롬프트**가 필요합니다.
+
+#### Few-shot Learning 활용
+
+**IntentClassifier의 Few-shot 프롬프트 예시:**
+
+```python
+# agents/intent_classifier.py:71
+prompt = f"""사용자 입력의 의도를 빠르게 분류하세요. (도메인 라우팅용)
+
+분류 기준:
+- weather_query: 날씨 관련 조회
+- calendar_query: 일정 조회  
+- calendar_create: 일정 생성
+- file_search: 문서/파일 검색
+- notification_send: 알림/공지 발송
+- help: 도움말/기능 설명
+- chat: 일반 대화/질문
+
+예시:
+"서울 날씨 어때?" → weather_query
+"오늘 일정 있어?" → calendar_query  
+"3시에 회의 잡아줘" → calendar_create
+"계약서 찾아줘" → file_search
+"팀에게 알려줘" → notification_send
+"뭐 할 수 있어?" → help
+"안녕하세요" → chat
+"우리 회사 매출이 얼마야?" → chat
+"비가 올까?" → weather_query
+"내일 미팅 있나?" → calendar_query
+
+사용자 입력: "{user_input}"
+분류 결과 (intent만 답변): """
+```
+
+**Few-shot의 핵심 원칙:**
+1. **명확한 분류 기준** 제시
+2. **다양한 예시** 포함 (긍정/부정 사례)  
+3. **일관된 출력 형식** 강제
+4. **엣지 케이스** 처리 ("비가 올까?" → weather_query)
+
+#### JSON 출력 강제하기
+
+**TaskPlannerAgent의 구조화된 출력:**
+
+```python
+# agents/task_planner_agent.py:56
+def plan(self, *, user_input: str, intent: str, apis: List[str], recent_turns: List[Dict[str, Any]]) -> Dict[str, Any]:
+    prompt = (
+        "당신은 태스크 플래너 에이전트입니다.\n"
+        "목표: 사용자 요청을 실행 가능한 서브태스크로 분해하고, 각 태스크의 실행 순서/의존성을 포함한 계획을 JSON으로 작성하세요.\n"
+        "반드시 JSON만 출력.\n\n"
+        "사용 가능한 도구:\n"
+        f"{self.tools_prompt}\n\n"
+        f"의도(intent): {intent}\n"
+        f"API 후보: {apis}\n\n"
+        f"최근 대화(참고): {_safe_str(recent_turns, 800)}\n\n"
+        "반환 형식(키 고정):\n"
+        '{ "tasks":[{"id":"t1","text":"...","tool":"weather.get|...|none","args":{...},"depends_on":["t0"],"produces":"짧게"}], "final_step":"tN" }\n\n'
+        "규칙:\n"
+        "- tool이 필요 없으면 \"none\"\n"
+        "- args는 가능한 채워서 주고, 불확실하면 비워두고 실행기(Executor)가 채우게 하세요.\n"
+        "- depends_on은 task id 리스트\n\n"
+        f"사용자 요청: {user_input}\n"
+    )
+    return _extract_json_object(self.llm_chat_fn(prompt))
+```
+
+**JSON 출력 강제 기법:**
+1. **"반드시 JSON만 출력"** 명시적 지시
+2. **정확한 스키마** 예시 제공
+3. **키 고정** 요구 (`"tasks"`, `"final_step"`)
+4. **구조 검증** 후처리 (`_extract_json_object`)
+
+#### 재계획 프롬프트 설계
+
+**실행 중 관찰 결과를 반영한 동적 재계획:**
+
+```python
+# agents/task_planner_agent.py:76
+def replan(self, *, user_input: str, intent: str, apis: List[str], 
+          current_tasks: List[Dict[str, Any]], observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    prompt = (
+        "당신은 태스크 플래너 에이전트입니다. 실행 중 관찰 결과를 반영해 계획을 업데이트하세요.\n"
+        "반드시 JSON만 출력.\n\n"
+        "사용 가능한 도구:\n"
+        f"{self.tools_prompt}\n\n"
+        f"의도(intent): {intent}\n"
+        f"API 후보: {apis}\n\n"
+        f"현재 계획(tasks): {_safe_str(current_tasks, 1400)}\n\n"
+        f"관찰(observations): {_safe_str(observations, 1400)}\n\n"  # ← 실행 결과 피드백
+        "반환 형식(키 고정):\n"
+        '{ "tasks":[{"id":"t1","text":"...","tool":"...|none","args":{...},"depends_on":["..."],"produces":"..."}], "final_step":"tN" }\n\n'
+        f"사용자 요청: {user_input}\n"
+    )
+    return _extract_json_object(self.llm_chat_fn(prompt))
+```
+
+#### 인자 보완 프롬프트
+
+**부족한 도구 인자를 LLM이 자동 추론:**
+
+```python
+# services/chat_service.py:475
+def _agentic_fill_args_prompt(self, *, user_input: str, tool: str, args_schema: Dict[str, Any], 
+                              recent_turns: List[Dict[str, Any]], observations: List[Dict[str, Any]]) -> str:
+    return (
+        "당신은 Executor를 돕는 ReAct 서브루틴입니다.\n"
+        "주어진 tool을 실행하기 위한 args만 JSON으로 채우세요. 반드시 JSON만 출력.\n\n"
+        f"tool: {tool}\n"
+        f"args_schema: {args_schema}\n"
+        f"최근 대화(참고): {_safe(recent_turns)}\n\n"
+        f"이전 관찰(observations, 참고): {_safe(observations)}\n\n"  # ← 이전 실행 결과 활용
+        f"사용자 요청: {user_input}\n"
+        '반환 형식: {"args":{...}}\n'
+    )
+```
+
+#### 최종 답변 생성 프롬프트
+
+**실행 관찰 결과를 자연어 답변으로 변환:**
+
+```python
+# services/chat_service.py:503
+def _agentic_final_answer_prompt(self, *, user_input: str, intent: str, 
+                                tasks: List[Dict[str, Any]], observations: List[Dict[str, Any]]) -> str:
+    return (
+        "당신은 Assistant입니다. 실행 관찰 결과를 바탕으로 사용자에게 최종 답변을 생성하세요.\n"
+        "불필요한 내부 계획/JSON/디버그를 노출하지 말고, 자연어로 간결하게 답하세요.\n\n"
+        "규칙:\n"
+        "- `rag.query` 관찰에 hits/source가 있으면, 답변 마지막에 **근거(출처)** 를 1~3개 bullet로 반드시 포함하세요.\n"
+        "- 사용자가 '공유/알려줘/슬랙' 등을 요청했고 `notification.send` 관찰이 있으면, '슬랙 공유 완료'를 함께 안내하세요.\n\n"
+        f"Intent: {intent}\n"
+        f"사용자 요청: {user_input}\n\n"
+        f"계획(tasks): {_safe(tasks, 1200)}\n\n"
+        f"관찰(observations): {_safe(observations, 1800)}\n"  # ← 모든 실행 결과 종합
+    )
+```
+
+#### 프롬프트 최적화 팁
+
+| **문제** | **해결책** | **예시** |
+|----------|-----------|----------|
+| **JSON 파싱 실패** | 스키마 예시 + "반드시 JSON만" | `'{ "tasks": [...] }'` |
+| **일관성 없는 출력** | Few-shot 예시 다양화 | 긍정/부정 사례 모두 포함 |
+| **컨텍스트 오버플로우** | 중요도별 내용 제한 | `_safe_str(data, limit=800)` |
+| **환각(Hallucination)** | 도구 목록 명시적 제공 | `tools_prompt()` 포함 |
+| **재계획 실패** | 이전 관찰 결과 피드백 | `observations` 활용 |
+
 ---
+
+<a id="chapter-4"></a>
 
 # Chapter 4: Agentic RAG 실전 구현 (코드 중심)
 
 > **Note:** 이 챕터는 실습 코드 리뷰와 시연 중심으로 진행됩니다. 사전에 작성된 코드를 함께 살펴보며 실제 구현 방법을 학습합니다.
 
+<a id="sec-4-1"></a>
+
 ## 4.1 구현 아키텍처 개요
+
+<a id="sec-4-1-diagram"></a>
 
 ### 시스템 구성도
 
@@ -1446,9 +1929,11 @@ ChatService (`services/chat_service.py`) ← Multi-Agent 오케스트레이션
 최종 답변 생성 (+ 근거/출처 + 알림결과 + 세션 캐시)
 ```
 
+<a id="sec-4-1-components"></a>
+
 ### 핵심 컴포넌트
 
-1.  **ChatService** - 비즈니스 로직 & Multi-Agent 조합
+1.  **ChatService (Master Agent)** - 비즈니스 로직 & Multi-Agent 조합
     *   파일: `chatbot-service/services/chat_service.py`
     *   역할: 룰 기반 ↔ 에이전트 모드 전환, 전체 실행 흐름 관리
     *   LLM 설정: `chatbot-service/services/llm_service.py` + `config.yml` + `.env`
@@ -1469,77 +1954,213 @@ ChatService (`services/chat_service.py`) ← Multi-Agent 오케스트레이션
     *   대화 컨텍스트: `chatbot-service/agents/context_manager.py` (세션 관리 + 툴 결과 캐시)
     *   TTL 기반 캐싱으로 중복 API 호출 방지 및 성능 최적화
 
-## 4.2 Multi-Agent 실행 흐름 Deep Dive
+<a id="sec-4-2"></a>
 
-### 4.2.1 실제 요청 처리 과정
+## 4.2 각 에이전트 상세 분석
 
-**예시 요청**: "다음 주 날씨 예보 보고서를 만들어서 팀에게 공유해줘"
+이제 우리 Multi-Agent 시스템의 **3개 전문화된 에이전트**와 **1개 마스터 에이전트**를 구현 레벨에서 상세히 분석해보겠습니다.
 
-#### Step 1: IntentClassifier (라우팅)
+<a id="sec-4-2-1"></a>
+
+### 4.2.1 ChatService (Master Agent) (`services/chat_service.py`)
+
+**역할:** 전체 Multi-Agent 파이프라인 오케스트레이션 및 최종 응답 생성
+
+#### 핵심 구현 포인트
+
 ```python
-# agents/intent_classifier.py:63
-def analyze_intent(self, user_input: str) -> Dict[str, Any]:
-    # Few-shot LLM 프롬프트로 의도 분류
-    primary_intent = "weather_query"  # 날씨 관련으로 분류
-    apis = ["weather"]
+# services/chat_service.py - Master Agent의 Multi-Agent 조율
+async def handle(self, *, message: str, conversation_id: str = None, conversation_history = None):
+    session_id = get_or_create_session(conversation_id)
     
-    # 복합 요청 감지: "팀에게 공유해줘" 
-    if self._detect_notification_intent(user_input):
-        apis.append("notification")
+    # 1. 의도 분석 (IntentClassifier)
+    intent_result = await self.intent_classifier.analyze_intent(...)
     
-    return {"intent": primary_intent, "apis": apis, "confidence": 0.85}
+    # 2. 태스크 계획 (TaskPlannerAgent)  
+    plan_result = await self.task_planner.plan(...)
+    
+    # 3. 도구 실행 (ToolExecutor)
+    observations, used_tools, final_tasks = await self.tool_executor.execute_plan(...)
+    
+    # 4. 최종 응답 합성
+    final_response = await self._synthesize_response(...)
 ```
 
-#### Step 2: TaskPlannerAgent (계획 수립)
+**마스터 에이전트의 책임:**
+
+1.  **Agent Coordination**: 3개 전문 에이전트 순차 호출 및 데이터 전달
+2.  **Context Management**: 세션별 대화 이력 및 도구 캐시 관리
+3.  **Error Recovery**: 각 단계 실패 시 적절한 복구 전략 실행 (`replan_fn`)
+4.  **Response Synthesis**: 관찰 결과를 자연어로 종합하여 최종 답변 생성
+
+#### 실행 모드 전환
+
 ```python
-# agents/task_planner_agent.py:56
-def plan(self, user_input: str, intent: str, apis: List[str]) -> Dict[str, Any]:
-    # LLM이 자동으로 다단계 계획 생성
-    return {
+# Rule-based vs Agentic 모드 자동 전환
+if self._is_simple_request(intent_result["intent"]):
+    # Rule-based: 단순 날씨/일정 조회 등
+    return await self._handle_simple_request(message, intent_result)
+else:
+    # Agentic: 복잡한 추론/계획이 필요한 요청
+    return await self._handle_complex_request(message, intent_result, plan_result)
+```
+
+<a id="sec-4-2-2"></a>
+
+### 4.2.2 IntentClassifier Agent (`agents/intent_classifier.py`)
+
+**역할:** 사용자 입력을 분석하여 의도를 분류하고 적절한 처리 전략(API 후보)을 결정합니다.
+
+#### 핵심 구현 포인트
+
+```python
+# agents/intent_classifier.py:45 - Few-shot Learning 기반 분류
+class IntentClassifier:
+    async def analyze_intent(self, *, user_input: str, conversation_history: List[Dict]) -> Dict[str, Any]:
+        # 1. Few-shot 예시 10개로 패턴 학습
+        few_shot_examples = [
+            {"input": "내일 서울 날씨 어때?", "intent": "weather_query", ...},
+            # ... 총 10개 예시
+        ]
+        
+        # 2. LLM 기반 의도 분류 (JSON 강제 출력)
+        prompt = self._build_few_shot_prompt(user_input, few_shot_examples)
+        result = await self.llm_service.generate(prompt, force_json=True)
+```
+
+**기술적 특징:**
+
+1.  **Composite Request 감지**: "날씨 확인하고 일정 만들어줘" 같은 복합 요청을 감지하고 `sub_intents`를 추출합니다.
+2.  **Fallback 메커니즘**: LLM 비활성화 시 키워드 기반 분류로 자동 전환됩니다.
+3.  **Context-Aware**: 대화 이력을 반영하여 보다 정확한 의도를 분석합니다.
+
+<a id="sec-4-2-3"></a>
+
+### 4.2.3 TaskPlannerAgent (`agents/task_planner_agent.py`)
+
+**역할:** 분류된 의도를 바탕으로, 실행 가능한 서브태스크들의 DAG(Directed Acyclic Graph)를 생성합니다.
+
+#### 핵심 구현 포인트
+
+```python
+# agents/task_planner_agent.py:87 - Dynamic Planning with ReAct
+async def plan(self, *, user_input: str, intent: str, apis: List[str], recent_turns: List[Dict]):
+    # 1. 사용 가능한 도구 목록 확인 (19개)
+    available_tools = self.tools_prompt
+    
+    # 2. ReAct 프롬프트로 계획 생성 요청
+    planning_prompt = f"""...
+사용 가능한 도구: {available_tools}
+의도: {intent}
+사용자 입력: {user_input}
+반환 형식(키 고정): {{"tasks":[...], "final_step":"tN"}}
+"""
+
+    # 3. JSON 강제 출력으로 구조화된 계획 생성
+    result = await self.llm_service.generate(planning_prompt, force_json=True)
+```
+
+**계획 품질 향상 기법:**
+
+1.  **Dependency Tracking**: 태스크 간 `depends_on` 관계를 명시하여 실행 순서를 보장합니다.
+2.  **Tool Selection**: 19개 도구 중 현재 요청에 가장 적합한 조합을 선택합니다.
+3.  **Error Recovery**: 실행 실패 시 `replan` 함수를 통해 동적으로 계획을 수정합니다.
+
+<a id="sec-4-2-4"></a>
+
+### 4.2.4 ToolExecutor (`services/tool_executor.py`)
+
+**역할:** 계획된 도구를 순차/병렬 실행하고, 결과를 캐싱하며, 모든 실행 과정을 `observations`로 기록합니다.
+
+#### 핵심 구현 포인트
+
+```python
+# services/tool_executor.py:228 - Session-based Execution with Caching
+async def execute_plan(self, *, tasks: List[Dict], ...):
+    observations: List[Dict[str, Any]] = []
+    
+    # DAG(위상 정렬)에 따라 태스크 실행
+    for task in self._sort_by_dependencies(tasks):
+        # 1. 세션 기반 캐시 확인
+        cached = context_manager.get_cached_tool_result(session_id, cache_key, ttl)
+        if cached:
+            # 캐시된 결과 사용
+        else:
+            # 2. 실제 도구(API) 실행
+            result = await self.call_tool(client, tool, args)
+            context_manager.set_cached_tool_result(...) # 결과 캐싱
+```
+
+**성능 최적화 기법:**
+
+1.  **TTL 기반 캐싱**: 도구별로 다른 캐시 유효기간(TTL)을 설정합니다. (e.g., 날씨 10분, 일정 1분)
+2.  **Parallel Execution**: 의존성이 없는 도구는 `asyncio.gather`를 통해 병렬 실행이 가능합니다.
+3.  **Error Handling**: 개별 도구 실행 실패가 전체 계획을 중단시키지 않도록 예외 처리 및 재계획을 트리거합니다.
+
+<a id="sec-4-3"></a>
+
+## 4.3 Multi-Agent 실행 흐름 Deep Dive
+
+앞서 분석한 에이전트들이 실제로 어떻게 협력하는지 구체적인 요청을 통해 따라가 보겠습니다.
+
+**예시 요청**: "Agentic RAG가 뭐야? 강의자료에서 근거를 찾아서 요약하고, 팀에게 슬랙으로 공유해줘"
+
+<a id="sec-4-3-step-1"></a>
+
+### Step 1: IntentClassifier (의도 분류)
+
+-   **입력**: "Agentic RAG가 뭐야? ... 슬랙으로 공유해줘"
+-   **출력**: `{"intent": "rag_query", "apis": ["rag", "notification"], "confidence": 0.9}`
+-   **판단**: `rag.query`와 `notification.send` 도구가 필요하다고 식별합니다.
+
+<a id="sec-4-3-step-2"></a>
+
+### Step 2: TaskPlannerAgent (계획 수립)
+
+-   **입력**: `intent`, `apis`
+-   **출력 (계획)**:
+    ```json
+    {
         "tasks": [
-            {"id": "t1", "tool": "weather.cities", "text": "날씨 조회 가능한 도시 목록 가져오기"},
-            {"id": "t2", "tool": "weather.forecast", "text": "특정 도시의 날씨 예보 조회", "depends_on": ["t1"]},
-            {"id": "t3", "tool": "notification.send", "text": "보고서를 팀에게 공유", "depends_on": ["t2"]}
+            {"id": "t1", "tool": "rag.query", "args": {"query": "Agentic RAG 정의"}, "text": "Agentic RAG 정의 검색"},
+            {"id": "t2", "tool": "notification.send", "args": {"message": "{t1.result} 요약"}, "depends_on": ["t1"], "text": "검색 결과를 요약하여 팀에게 공유"}
         ]
     }
-```
+    ```
+-   **판단**: `rag.query`를 먼저 실행하고, 그 결과를 `notification.send`의 인자로 사용해야 함을 `depends_on`으로 명시합니다.
 
-#### Step 3: ToolExecutor (실행 + 캐싱)
-```python
-# services/tool_executor.py:225
-async def execute_plan(self, tasks: List[Dict], fill_args_fn, replan_fn):
-    observations = []
-    
-    for task in self._topo_sort(tasks):  # 의존성 순서로 실행
-        tool = task["tool"]
-        
-        # 세션 캐시 확인
-        cache_key = self.make_cache_key(tool, args)
-        cached = context_manager.get_cached_tool_result(session_id, cache_key, ttl)
-        
-        if cached:
-            observations.append({"cached": True, "result": cached})
-        else:
-            result = await self.call_tool(client, tool, args)
-            context_manager.set_cached_tool_result(session_id, cache_key, result)
-            observations.append({"cached": False, "result": result})
-    
-    return observations
-```
+<a id="sec-4-3-step-3"></a>
 
-### 4.2.2 실제 실행 결과 (로그 분석)
+### Step 3: ToolExecutor (실행 및 관찰)
 
-```
-INFO: POST /api/chat/stream HTTP/1.1 200 OK
-INFO: GET /weather/서울/forecast HTTP/1.1 200 OK  ← weather.forecast 실행
-INFO: POST /notifications/send HTTP/1.1 200 OK   ← notification.send 실행
-```
+1.  **t1 실행**: `rag.query` 호출 → `[Observation 1]` (문서 검색 결과) 생성
+2.  **t2 실행**: `notification.send` 호출 → `[Observation 2]` (알림 발송 성공) 생성
 
-**주목할 점**: `weather.cities`는 하드코딩 응답이라 HTTP 로그 없음 (즉시 응답)
+<a id="sec-4-3-step-4"></a>
 
-## 4.3 코드 리뷰: 주요 구현 포인트
+### Step 4: ChatService (최종 답변 종합)
 
-### 4.2.1 벡터 DB 연결 및 RAG 도구 구성
+-   **입력**: `[Observation 1]`, `[Observation 2]`
+-   **출력 (최종 답변)**:
+    > "Agentic RAG는 RAG를 에이전트가 필요할 때 사용하는 도구로 보는 방식입니다... (중략)
+    >
+    > **[슬랙 공유 완료]** 팀 채널에 요약을 전송했습니다."
+
+<a id="sec-4-3-insights"></a>
+
+### 핵심 인사이트
+
+-   에이전트가 스스로 “RAG 검색이 필요한지 / 알림 전송이 필요한지”를 판단하고 tool을 조합합니다.
+-   고정된 파이프라인이 아닌 **동적 의사결정**으로 복잡한 문제를 해결합니다.
+-   `depends_on`을 이용한 태스크 의존성 관리가 Multi-Agent 협업의 핵심입니다.
+
+<a id="sec-4-4"></a>
+
+## 4.4 코드 리뷰: 주요 구현 포인트
+
+<a id="sec-4-4-1"></a>
+
+### 4.4.1 벡터 DB 연결 및 RAG 도구 구성
 
 **핵심 코드 스니펫:**
 
@@ -1549,36 +2170,23 @@ INFO: POST /notifications/send HTTP/1.1 200 OK   ← notification.send 실행
 `rag-service`(8005) + `shared_utils.py/QdrantUtils`로 RAG를 제공합니다.
 """
 
-from shared_utils import QdrantUtils, TextUtils, iter_docs_files
-from pathlib import Path
-import uuid
+# chatbot-service/services/tool_executor.py
+# 'rag.query' 도구가 호출되면 내부적으로 rag-service API를 호출합니다.
 
-# 1) Qdrant client helper (host/port/collection 등은 backend/.env + backend/shared_config.py에서 로드)
-qdrant = QdrantUtils()
-
-# 2) (예시) 문서 인덱싱: docs/ 폴더를 청킹 후 upsert
-repo_root = Path(__file__).resolve().parents[3]  # .../code/backend/rag-service 기준
-docs_root = repo_root / "docs"
-
-chunks = []
-for fp in iter_docs_files(docs_root):
-    text = fp.read_text(encoding="utf-8", errors="ignore")
-    for part in TextUtils.chunk_text(text):
-        chunks.append({"id": uuid.uuid4().hex, "text": part, "source": str(fp), "meta": {}})
-
-qdrant.upsert_chunks(chunks)
-
-# 3) 질의: query를 임베딩해서 Qdrant에서 top_k 검색
-hits = qdrant.search("Agentic RAG가 뭔가요?", top_k=5)
-print(hits[0]["payload"]["source"], hits[0]["payload"]["text"][:200])
+async def call_tool(self, tool_name: str, args: Dict) -> Any:
+    if tool_name == "rag.query":
+        # http://localhost:8005/rag/query 로 POST 요청
+        response = await client.post(f"{self.rag_service_url}/query", json=args)
+        return response.json()
 ```
 
 **주요 포인트:**
-*   이 프로젝트에서 RAG는 **별도 마이크로서비스**(`rag-service`)로 제공되며, API는 `POST /rag/index/docs`, `POST /rag/query`
-*   임베딩 키가 없거나(Qdrant 미기동 포함) 의존성이 준비되지 않으면 `rag-service`가 503(degraded)를 반환할 수 있음
-*   에이전트 관점에서는 “RAG 도구”가 `ToolExecutor`의 `rag.query`로 노출됨 (`chatbot-service/services/tool_executor.py`)
+*   이 프로젝트에서 RAG는 **별도 마이크로서비스**(`rag-service`)로 제공됩니다.
+*   에이전트 관점에서는 `rag.query`라는 하나의 도구로 추상화되어 노출됩니다.
 
-### 4.2.2 에이전트 생성 및 실행
+<a id="sec-4-4-2"></a>
+
+### 4.4.2 에이전트 생성 및 실행
 
 **(실습 코드) `chatbot-service` 기반 에이전트 실행 흐름:**
 
@@ -1586,89 +2194,34 @@ print(hits[0]["payload"]["source"], hits[0]["payload"]["text"][:200])
 """
 요약:
 - API 진입: chatbot-service/api/chat.py
-- 런타임: chatbot-service/services/agent_runtime.py
-- 오케스트레이터: chatbot-service/services/orchestrator.py
+- Master Agent: chatbot-service/services/chat_service.py
   - IntentClassifier -> TaskPlannerAgent(plan/replan) -> ToolExecutor(execute+cache)
 """
 
-from services.agent_runtime import agent_runtime
+# services/chat_service.py의 handle 메서드가 모든 것을 조율합니다.
+class ChatService:
+    def __init__(self):
+        self.intent_classifier = IntentClassifier()
+        self.task_planner = TaskPlannerAgent()
+        self.tool_executor = ToolExecutor()
+        # ...
 
-# FastAPI 라우터에서는 아래와 같이 런타임만 호출하면 됩니다.
-result = await agent_runtime.handle(message="오늘 서울 날씨를 팀에게 슬랙으로 알려줘")
-print(result["message"])
+    async def handle(self, message: str, ...):
+        # ... (위에서 설명한 Step 1~4 실행) ...
+        return final_response
 ```
 
-### 4.2.3 동적 검색 전략: 에이전트의 자율 판단
-
-**에이전트 실행 로그 예시 (내부 추론 과정):**
-
-```
-사용자 질문: "Agentic RAG가 뭐야? 강의자료에서 근거를 찾아서 요약하고, 팀에게 슬랙으로 공유해줘"
-
-[Agent Thought 1]
-"먼저 내부 문서(강의자료)에서 Agentic RAG 정의/핵심 포인트를 찾아야 한다.
-그 다음 요약을 만들고 팀에게 슬랙 알림으로 공유하면 된다."
-
-[Action 1] rag.query(query="Agentic RAG 정의 핵심 원리", top_k=3)
-[Observation 1] hits:
-- (docs/Agentic_RAG_Basic.md) "... RAG를 시스템 핵심에서 에이전트가 사용하는 여러 도구 중 하나로 전환 ..."
-- (docs/Agentic_RAG_Basic.md) "... 계획(Planning) → 도구 실행(Acting) → 관찰(Observation) → 재계획(Replan) ..."
-
-[Agent Thought 2]
-"근거를 확보했으니 한 문단으로 요약하고, 팀에게 전달할 메시지를 구성하자."
-
-[Action 2] notification.send(
-  title="Agentic RAG 요약",
-  message="Agentic RAG는 RAG를 '에이전트가 쓰는 도구 중 하나'로 두고, 계획→실행→관찰→재계획 루프로 필요한 도구(RAG/서비스 API)를 자율적으로 호출해 답을 구성합니다. (근거: docs/Agentic_RAG_Basic.md)",
-  recipient="team",
-  channel="slack"
-)
-[Observation 2] {"status":"sent","channel":"slack","id":"..."}
-
-[Agent Thought 3]
-"사용자에게 요약을 전달하고, 슬랙 공유 완료를 안내하면 된다."
-
-[Final Answer]
-"Agentic RAG는 RAG를 '항상 고정으로 붙는 파이프라인'이 아니라, 에이전트가 필요할 때 꺼내 쓰는 도구로 두는 방식입니다.
-즉, 에이전트가 질문을 분석해 계획을 세우고(Planning), 필요한 도구(API/RAG)를 호출해 관찰을 쌓고(Acting/Observation), 필요하면 재계획(Replan)하면서 최종 답을 만듭니다.
-
-[슬랙 공유 완료] 팀 채널에 요약을 전송했습니다."
-```
-
-**핵심 인사이트:**
-*   에이전트가 스스로 “RAG 검색이 필요한지 / 알림 전송이 필요한지”를 판단하고 tool을 조합
-*   고정된 파이프라인이 아닌 동적 의사결정
-*   tool description(무엇을 할 수 있는지)와 입력 스키마가 툴 선택 품질에 큰 영향을 줌
-
-## 4.3 실전 시연: 복잡한 질의응답 처리
-
-### 시연 시나리오
-
-**질문:** "지난 분기 매출 증가율을 계산하고, 경쟁사 A의 최근 뉴스를 찾아서 우리 전략을 제안해줘."
-
-**에이전트 처리 과정:**
-
-1.  **작업 분해 (Planning)**
-    *   작업1: 지난 분기와 전전 분기 매출 데이터 검색
-    *   작업2: 증가율 계산
-    *   작업3: 경쟁사 A 최근 뉴스 검색
-    *   작업4: 전략 제안
-
-2.  **도구 실행 (Acting)**
-    *   `company_knowledge_search("2024년 3분기 4분기 매출")` → 데이터 확보
-    *   `calculator("(4분기매출 - 3분기매출) / 3분기매출 * 100")` → 15% 증가 계산
-    *   `web_search("경쟁사 A 2024 최근 뉴스")` → "경쟁사 A, 신제품 B 출시"
-    *   내부 추론으로 전략 제안 생성
-
-3.  **최종 답변 (Generation)**
-    *   매출 증가율, 경쟁사 동향, 전략 제안을 종합한 보고서 형태 답변
-
+<a id="chapter-5"></a>
 
 # Chapter 5: 실전 활용 및 최적화
 
 > **Note:** 프로덕션 환경 배포와 성능 최적화를 다룹니다.
 
+<a id="sec-5-1"></a>
+
 ## 5.1 성능 최적화 전략
+
+<a id="sec-5-1-1"></a>
 
 ### 5.1.1 LLM 토큰 비용 관리
 
@@ -1698,6 +2251,8 @@ print(result["message"])
     *   단순 분류 - role base, 라우팅: GPT-4o-mini
     *   복잡한 추론: GPT-4 Turbo
 
+<a id="sec-5-1-2"></a>
+
 ### 5.1.2 응답 속도 향상
 
 **병목 지점 분석:**
@@ -1710,11 +2265,15 @@ print(result["message"])
 | 전체 파이프라인 | 2~8초 | 병렬화, 캐싱 |
 
 
+<a id="sec-5-1-3"></a>
+
 ### 5.1.3 검색 품질 개선
 
 검색 품질을 40% → 70%까지 올리는 건 “구조를 갖춘 RAG”만 해도 가능하지만, **70% → 80~90%**는 대부분 **데이터/검색/랭킹/운영 루프**에서 디테일을 쌓아야 합니다. 아래는 프로덕션에서 체감 효과가 큰 개선 포인트들입니다.
 
 ---
+
+<a id="sec-5-1-3-1"></a>
 
 #### 1) 먼저 “문제가 어디서 생기는지”를 분해해서 본다 (에러 택소노미)
 
@@ -1731,6 +2290,8 @@ print(result["message"])
 - **Recall@K는 높은데 MRR/NDCG가 낮으면**: re-ranker(또는 쿼리 리라이트/확장) 쪽이 효율이 좋습니다.
 
 ---
+
+<a id="sec-5-1-3-2"></a>
 
 #### 2) 임베딩 모델 선택: “한국어”는 생각보다 함정이 많다
 
@@ -1750,6 +2311,8 @@ print(result["message"])
 임베딩을 곧바로 파인튜닝하는 건 비용 대비 실패 확률이 높습니다(학습 데이터/하드 네거티브가 없으면 특히).
 
 ---
+
+<a id="sec-5-1-3-3"></a>
 
 #### 3) 임베딩 파인튜닝을 “언제” 하는가 (그리고 무엇이 데이터가 되는가)
 
@@ -1772,6 +2335,8 @@ print(result["message"])
 
 ---
 
+<a id="sec-5-1-3-4"></a>
+
 #### 4) Chunking(청킹)이 실제로 성능을 좌우한다
 
 청킹은 “길이” 문제가 아니라 “정답 근거가 한 덩어리로 존재하느냐” 문제입니다.
@@ -1785,9 +2350,11 @@ print(result["message"])
 
 ---
 
+<a id="sec-5-1-3-5"></a>
+
 #### 5) 하이브리드 검색은 “정확도 상한”을 올려준다
 
-프로덕션에서 80%를 넘기기 힘든 이유 중 하나가 **벡터가 못 잡는 키워드/코드/고유명사**입니다.
+앞서 `3.1.1 하이브리드 검색`에서 그 원리를 설명했듯이, 이 기법은 벡터 검색만으로는 한계가 있는 **키워드/코드/고유명사** 검색을 보완하여 정확도의 상한선을 높여줍니다. 프로덕션에서 80% 이상의 정확도를 목표할 때 특히 중요합니다.
 
 - **BM25(키워드) + Vector(의미) 결합**은 특히 다음에서 강합니다.
   - 제품명/프로젝트명/에러코드/약관 조항 번호/정확한 문자열
@@ -1796,6 +2363,8 @@ print(result["message"])
   - **가중치(예: 40/60)** 자체보다, **필터링(메타데이터) + re-ranker**까지 합쳐진 파이프라인이 성능을 결정합니다.
 
 ---
+
+<a id="sec-5-1-3-6"></a>
 
 #### 6) Query 전처리: “사용자가 던지는 질문”을 검색 가능한 형태로 바꾼다
 
@@ -1814,9 +2383,11 @@ print(result["message"])
 
 ---
 
+<a id="sec-5-1-3-7"></a>
+
 #### 7) Re-ranker는 “랭킹의 마지막 10~20%”를 올리는 가장 강력한 레버
 
-re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)** 계열이 강합니다.
+`3.1.2 Re-ranking`에서 설명한 2단계 검색 구조의 핵심인 Re-ranker는, 특히 랭킹의 마지막 10~20% 정확도를 끌어올리는 가장 강력한 레버입니다. `3.1.2 Re-ranking`에서 설명한 2단계 검색 구조의 핵심인 Re-ranker는, 특히 랭킹의 마지막 10~20% 정확도를 끌어올리는 가장 강력한 레버입니다. re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)** 계열이 강합니다.
 
 - **도입 효과가 큰 조건**: 상위 K에 정답이 자주 “있긴 한데” 순위가 낮을 때
 - **비용/지연 고려**:
@@ -1827,6 +2398,8 @@ re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)**
 
 ---
 
+<a id="sec-5-1-3-8"></a>
+
 #### 8) 메타데이터/필터링: 정확도를 올리는 ‘숨은 치트키’
 
 벡터 검색만으로는 “정답이 아닌데 의미가 비슷한 문서”가 계속 섞입니다. 이걸 줄이는 게 80% 이후의 핵심이에요.
@@ -1836,6 +2409,8 @@ re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)**
 - 특히 **정책/규정은 버전 관리**가 중요 (구버전이 섞이면 체감 정확도가 급락)
 
 ---
+
+<a id="sec-5-1-3-9"></a>
 
 #### 9) “정답률 90%”는 기능이 아니라 운영 체계다 (평가/모니터링/피드백 루프)
 
@@ -1849,6 +2424,8 @@ re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)**
   - “못 찾음 vs 찾았는데 못 씀 vs 환각”으로 분류해서 담당 레버(청킹/검색/리랭킹/프롬프트)를 다르게 튜닝
 
 ---
+
+<a id="sec-5-1-3-10"></a>
 
 #### 10) 현실 조언: 70% → 90% 구간에서 자주 하는 실수
 
@@ -1866,6 +2443,8 @@ re-ranker는 보통 **Cross-Encoder(쿼리-문서 쌍을 같이 읽는 모델)**
 *   하이브리드 검색 (BM25 40% + Vector 60%) vs 순수 벡터 검색
 *   Re-ranking 적용 여부
 *   청크 크기 비교 (256 토큰 vs 512 토큰)
+
+<a id="sec-5-1-resources"></a>
 
 ### 추천 리소스
 
