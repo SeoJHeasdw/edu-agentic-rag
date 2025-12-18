@@ -62,27 +62,29 @@ npm run dev
 
 프론트엔드는 `http://localhost:5173`에서 실행됩니다.
 
-자세한 내용은 [프론트엔드 README](code/frontend/README.md)를 참고하세요.
+자세한 내용은 [code/frontend README](code/frontend/README.md)를 참고하세요.
 
-#### 백엔드 실행 (Chatbot Service)
+#### 백엔드 실행(통합)
 
 ```bash
-cd code/backend/chatbot-service
-pip install -r requirements.txt
+cd code/backend/
+config.yml설정:
+llm:
+  provider: "azure_openai"  # "mock" | "openai" | "azure_openai"
+
+# 라이브러리 설치(통합)
+cd code/backend/
+pip install -r shared_requirements.txt
 
 # 환경 변수 설정 (.env 파일 생성)
-cd ../
 cp .env.example .env
 # .env 파일을 편집하여 API 키 설정
 
-# 개발 서버 실행
-cd chatbot-service
-python -m uvicorn main:app --reload
+# 모든 서비스 실행
+python start_services.py
 ```
 
-백엔드는 `http://localhost:8000`에서 실행됩니다.
-
-자세한 내용은 [Chatbot Service README](code/backend/chatbot-service/README.md)를 참고하세요.
+자세한 내용은 [code/backend README](code/backend/cREADME.md)를 참고하세요.
 
 ## 📖 학습 경로
 
@@ -113,7 +115,7 @@ python -m uvicorn main:app --reload
 
 ### 백엔드
 - ✅ FastAPI
-- ✅ Python 3.10+
+- ✅ Python 3.11+
 - ✅ OpenAI / Azure OpenAI 지원
 - ✅ config.yml을 통한 LLM 제공자 전환
 
@@ -131,9 +133,9 @@ python -m uvicorn main:app --reload
 - ✅ OpenAI / Azure OpenAI 통합
 - ✅ 스트리밍 응답 지원
 - ✅ 대화 히스토리 관리
-- 🔄 RAG 시스템 구현 (예정)
-- 🔄 Vector Store 연동 (예정)
-- 🔄 Agent 워크플로우 (예정)
+- ✅ RAG 시스템 구현
+- ✅ Vector Store 연동
+- ✅ Agent 워크플로우 
 
 ## 🎯 실습 목표
 
