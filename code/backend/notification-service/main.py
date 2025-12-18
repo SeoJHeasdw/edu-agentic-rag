@@ -82,13 +82,6 @@ async def send_notification(notification_data: NotificationCreate):
     return n
 
 
-@app.get("/notifications/{notification_id}", response_model=Notification)
-async def get_notification(notification_id: str):
-    if notification_id not in NOTIFICATIONS:
-        raise HTTPException(status_code=404, detail="알림을 찾을 수 없습니다")
-    return NOTIFICATIONS[notification_id]
-
-
 @app.get("/notifications/history")
 async def get_notification_history(limit: int = 50):
     sorted_history = sorted(HISTORY, key=lambda x: x.created_at, reverse=True)
@@ -116,5 +109,15 @@ async def get_notification_stats():
         "channel_distribution": channel_dist,
         "type_distribution": type_dist,
     }
+
+
+# NOTE:
+# Keep the dynamic route after the static routes (history/stats),
+# otherwise `/notifications/history` can be captured as `{notification_id}="history"`.
+@app.get("/notifications/{notification_id}", response_model=Notification)
+async def get_notification(notification_id: str):
+    if notification_id not in NOTIFICATIONS:
+        raise HTTPException(status_code=404, detail="알림을 찾을 수 없습니다")
+    return NOTIFICATIONS[notification_id]
 
 

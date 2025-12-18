@@ -1,8 +1,8 @@
 """
-마이크로서비스 기반 런타임(실습용).
+Microservice-based orchestrator (lab-friendly).
 
-- (임시) 키워드 기반 의도 라우팅/실행 로직 포함
-- HTTP로 모의 마이크로서비스 호출:
+- Keyword-based intent routing (temporary; replace with shared intent classifier later)
+- Calls mock microservices via HTTP:
   - weather-service: 8001
   - calendar-service: 8002
   - file-service: 8003
@@ -144,32 +144,39 @@ class Orchestrator:
         # If LLM is enabled, run agentic pipeline:
         # IntentClassifier(lightweight) -> TaskPlannerAgent(plan/replan) -> ToolExecutor(execute+cache) -> final answer
         if llm_service.is_enabled():
-            agent_result = await self._agentic_run(message=message, session_id=session_id)
-            response_text = agent_result.get("final", "")
-            meta: Dict[str, Any] = {
-                "intent": "agentic",
-                "analysis": {
-                    "intent": agent_result.get("intent", "agentic"),
-                    "apis": agent_result.get("apis", []),
-                    "confidence": float(agent_result.get("confidence", 0.7)),
-                },
-                "plan": {"tasks": agent_result.get("todo", [])},
-                "agent": {"executed": agent_result.get("executed", []), "used_tools": agent_result.get("used_tools", [])},
-                "session_id": session_id,
-                "recent_turns": context_manager.get_recent_turns(session_id, n=5),
-            }
-            context_manager.add_conversation_turn(
-                session_id=session_id,
-                user_input=message,
-                assistant_response=response_text,
-                intent="agentic",
-                confidence=float(agent_result.get("confidence", 0.7)),
-                apis_used=agent_result.get("used_tools", []) or [],
-                success=True,
-                processing_time=time.time() - start,
-                metadata={"agent": agent_result},
-            )
-            return {"message": response_text, "meta": meta, "conversation_id": session_id}
+            try:
+                agent_result = await self._agentic_run(message=message, session_id=session_id)
+                response_text = agent_result.get("final", "")
+                meta: Dict[str, Any] = {
+                    "intent": "agentic",
+                    "analysis": {
+                        "intent": agent_result.get("intent", "agentic"),
+                        "apis": agent_result.get("apis", []),
+                        "confidence": float(agent_result.get("confidence", 0.7)),
+                    },
+                    "plan": {"tasks": agent_result.get("todo", [])},
+                    "agent": {"executed": agent_result.get("executed", []), "used_tools": agent_result.get("used_tools", [])},
+                    "session_id": session_id,
+                    "recent_turns": context_manager.get_recent_turns(session_id, n=5),
+                }
+                context_manager.add_conversation_turn(
+                    session_id=session_id,
+                    user_input=message,
+                    assistant_response=response_text,
+                    intent="agentic",
+                    confidence=float(agent_result.get("confidence", 0.7)),
+                    apis_used=agent_result.get("used_tools", []) or [],
+                    success=True,
+                    processing_time=time.time() - start,
+                    metadata={"agent": agent_result},
+                )
+                return {"message": response_text, "meta": meta, "conversation_id": session_id}
+            except Exception as e:
+                # Fail-safe: if LLM is misconfigured or temporarily unavailable,
+                # fall back to the rule-based orchestrator instead of crashing the API.
+                llm_error = str(e)
+        else:
+            llm_error = None
 
         classifier = IntentClassifier()
         analysis = classifier.analyze_intent(message, context=None)
@@ -184,6 +191,11 @@ class Orchestrator:
             "session_id": session_id,
             "recent_turns": context_manager.get_recent_turns(session_id, n=5),
         }
+        if llm_error:
+            meta["llm_fallback"] = {
+                "provider": llm_service.provider,
+                "error": llm_error,
+            }
 
         if intent in ("help",):
             return {
@@ -232,8 +244,8 @@ class Orchestrator:
                 if wants_notify and notify_meta:
                     response_text = _with_plan(
                         f"{weather_summary}\n\n[mock] {notify_meta.get('channel', 'slack')} 알림 발송 완료 (id={notify_meta.get('id')})",
-                    plan,
-                )
+                        plan,
+                    )
                 else:
                     response_text = _with_plan(weather_summary, plan)
 
@@ -426,7 +438,7 @@ class Orchestrator:
         )
         return {"message": response_text, "meta": meta, "conversation_id": session_id}
 
-    # ---------------- Agentic 내부 구현(런타임은 orchestrator 하나로 유지) ----------------
+    # ---------------- Agentic internals (keep orchestrator as the single runtime) ----------------
     def _agentic_executor(self) -> ToolExecutor:
         return ToolExecutor(
             weather_base_url=self.weather_base_url,
@@ -608,64 +620,68 @@ class Orchestrator:
         session_id = get_or_create_session(conversation_id)
 
         if llm_service.is_enabled():
-            # Agentic coarse streaming (planner + executor)
-            recent_turns = context_manager.get_recent_turns(session_id, n=5)
-            yield {"todo": [], "completed": 0, "status": "의도 분석 중..."}
+            try:
+                # Agentic coarse streaming (planner + executor)
+                recent_turns = context_manager.get_recent_turns(session_id, n=5)
+                yield {"todo": [], "completed": 0, "status": "의도 분석 중..."}
 
-            analysis = IntentClassifier().analyze_intent(message, context=None)
-            intent = str(analysis.get("intent") or "chat")
-            apis = list(analysis.get("apis") or [])
+                analysis = IntentClassifier().analyze_intent(message, context=None)
+                intent = str(analysis.get("intent") or "chat")
+                apis = list(analysis.get("apis") or [])
 
-            yield {"todo": [], "completed": 0, "status": "계획 수립 중..."}
-            planner = TaskPlannerAgent(
-                llm_chat_fn=lambda prompt: llm_service.chat(message=prompt, conversation_history=None),
-                tools_prompt=tools_prompt(),
-            )
-            plan_obj = planner.plan(user_input=message, intent=intent, apis=apis, recent_turns=recent_turns)
-            tasks = plan_obj.get("tasks") if isinstance(plan_obj.get("tasks"), list) else []
-            if not tasks:
-                tasks = [{"id": "t1", "text": "요청을 처리한다", "tool": "none", "args": {}, "depends_on": [], "produces": "final"}]
-            tasks = self._agentic_topo_sort(tasks)
-            todo = [str(t.get("text") or "") for t in tasks if isinstance(t, dict) and t.get("text")]
-            yield {"todo": todo, "completed": 0, "status": "계획 수립 완료"}
-
-            completed = 0
-            for t in tasks:
-                completed = min(completed + 1, len(todo))
-                tool = str(t.get("tool") or "none").strip()
-                status = f"{tool} 실행 중..." if tool and tool != "none" else "진행 중..."
-                yield {"todo": todo, "completed": completed, "status": status}
-
-            executor = self._agentic_executor()
-
-            def fill_args(tool: str, schema: Dict[str, Any]) -> Dict[str, Any]:
-                filled = self._agentic_extract_json_object(
-                    llm_service.chat(message=self._agentic_fill_args_prompt(user_input=message, tool=tool, args_schema=schema, recent_turns=recent_turns), conversation_history=None)
+                yield {"todo": [], "completed": 0, "status": "계획 수립 중..."}
+                planner = TaskPlannerAgent(
+                    llm_chat_fn=lambda prompt: llm_service.chat(message=prompt, conversation_history=None),
+                    tools_prompt=tools_prompt(),
                 )
-                return filled.get("args") if isinstance(filled.get("args"), dict) else {}
+                plan_obj = planner.plan(user_input=message, intent=intent, apis=apis, recent_turns=recent_turns)
+                tasks = plan_obj.get("tasks") if isinstance(plan_obj.get("tasks"), list) else []
+                if not tasks:
+                    tasks = [{"id": "t1", "text": "요청을 처리한다", "tool": "none", "args": {}, "depends_on": [], "produces": "final"}]
+                tasks = self._agentic_topo_sort(tasks)
+                todo = [str(t.get("text") or "") for t in tasks if isinstance(t, dict) and t.get("text")]
+                yield {"todo": todo, "completed": 0, "status": "계획 수립 완료"}
 
-            def replan(current_tasks: List[Dict[str, Any]], observations: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
-                rp = planner.replan(user_input=message, intent=intent, apis=apis, current_tasks=current_tasks, observations=observations)
-                new_tasks = rp.get("tasks") if isinstance(rp.get("tasks"), list) else None
-                return self._agentic_topo_sort(new_tasks) if new_tasks else None
+                completed = 0
+                for t in tasks:
+                    completed = min(completed + 1, len(todo))
+                    tool = str(t.get("tool") or "none").strip()
+                    status = f"{tool} 실행 중..." if tool and tool != "none" else "진행 중..."
+                    yield {"todo": todo, "completed": completed, "status": status}
 
-            observations, _, final_tasks = await executor.execute_plan(
-                user_input=message,
-                session_id=session_id,
-                tasks=tasks,
-                fill_args_fn=fill_args,
-                replan_fn=replan,
-            )
+                executor = self._agentic_executor()
 
-            final_text = str(
-                llm_service.chat(
-                    message=self._agentic_final_answer_prompt(user_input=message, intent=intent, tasks=final_tasks, observations=observations),
-                    conversation_history=None,
+                def fill_args(tool: str, schema: Dict[str, Any]) -> Dict[str, Any]:
+                    filled = self._agentic_extract_json_object(
+                        llm_service.chat(message=self._agentic_fill_args_prompt(user_input=message, tool=tool, args_schema=schema, recent_turns=recent_turns), conversation_history=None)
+                    )
+                    return filled.get("args") if isinstance(filled.get("args"), dict) else {}
+
+                def replan(current_tasks: List[Dict[str, Any]], observations: List[Dict[str, Any]]) -> Optional[List[Dict[str, Any]]]:
+                    rp = planner.replan(user_input=message, intent=intent, apis=apis, current_tasks=current_tasks, observations=observations)
+                    new_tasks = rp.get("tasks") if isinstance(rp.get("tasks"), list) else None
+                    return self._agentic_topo_sort(new_tasks) if new_tasks else None
+
+                observations, _, final_tasks = await executor.execute_plan(
+                    user_input=message,
+                    session_id=session_id,
+                    tasks=tasks,
+                    fill_args_fn=fill_args,
+                    replan_fn=replan,
                 )
-                or ""
-            ).strip()
-            yield {"todo": todo, "completed": len(todo), "status": "완료", "final": final_text, "done": True}
-            return
+
+                final_text = str(
+                    llm_service.chat(
+                        message=self._agentic_final_answer_prompt(user_input=message, intent=intent, tasks=final_tasks, observations=observations),
+                        conversation_history=None,
+                    )
+                    or ""
+                ).strip()
+                yield {"todo": todo, "completed": len(todo), "status": "완료", "final": final_text, "done": True}
+                return
+            except Exception as e:
+                # Stream fail-safe: downgrade to rule-based stream so UI still completes.
+                yield {"todo": [], "completed": 0, "status": f"LLM 오류로 rule-based로 전환: {e}"}
 
         # Rule-based structured stream (existing behavior moved from api/chat.py)
         classifier = IntentClassifier()
