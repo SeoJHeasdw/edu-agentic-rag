@@ -1,6 +1,6 @@
 <template>
-    <div class="mock-message-component">
-        <!-- Breakpoint Components (normal message styling) -->
+    <div class="structured-message">
+        <!-- Breakpoint Components -->
         <div
             v-if="
                 messageComponents.breakpoints &&
@@ -23,21 +23,15 @@
                 />
 
                 <!-- Regular Breakpoint Content -->
-                <div
-                    v-else-if="breakpoint.content"
-                    class="breakpoint-content"
-                >
+                <div v-else-if="breakpoint.content" class="breakpoint-content">
                     <!-- Status Header -->
-                    <div 
-                        v-if="breakpoint.status"
-                        class="breakpoint-status"
-                    >
+                    <div v-if="breakpoint.status" class="breakpoint-status">
                         <div class="flex items-center gap-2">
                             <div class="status-indicator"></div>
                             <span class="status-text">{{ breakpoint.status }}</span>
                         </div>
                     </div>
-                    
+
                     <!-- Content -->
                     <div
                         class="search-result-content prose prose-xs max-w-none text-gray-700 leading-relaxed"
@@ -47,24 +41,18 @@
             </div>
         </div>
 
-        <!-- Current Status (original thinking style) -->
+        <!-- Current Status (thinking style) -->
         <div
-            v-if="
-                messageComponents.currentStatus && messageComponents.isThinking
-            "
+            v-if="messageComponents.currentStatus && messageComponents.isThinking"
             class="flex items-center gap-3 text-sm text-teal-600"
         >
-            <!-- 동글뱅이 스피너 -->
             <div class="flex items-center justify-center">
                 <div
                     class="w-5 h-5 border-2 border-teal-200 border-t-teal-500 rounded-full animate-spin"
                 ></div>
             </div>
-            <!-- 텍스트 애니메이션 -->
             <div class="flex items-center">
-                <span class="animate-pulse">{{
-                    messageComponents.currentStatus
-                }}</span>
+                <span class="animate-pulse">{{ messageComponents.currentStatus }}</span>
                 <span class="ml-1 animate-bounce">.</span>
                 <span
                     class="ml-0.5 animate-bounce"
@@ -79,21 +67,16 @@
             </div>
         </div>
 
-        <!-- Streaming Response (normal message styling) -->
+        <!-- Streaming Response -->
         <div
             v-if="messageComponents.currentResponse"
             class="message-content prose prose-sm max-w-none text-gray-800 leading-relaxed"
             v-html="parseMarkdown(messageComponents.currentResponse)"
         ></div>
 
-        <!-- Final Response (normal message styling) -->
-        <div
-            v-if="messageComponents.finalResponse"
-            class="final-response-container"
-        >
-            <!-- Divider before final response -->
+        <!-- Final Response -->
+        <div v-if="messageComponents.finalResponse" class="final-response-container">
             <div class="breakpoint-divider"></div>
-
             <div
                 class="message-content prose prose-sm max-w-none text-gray-800 leading-relaxed"
                 v-html="parseMarkdown(messageComponents.finalResponse)"
@@ -114,12 +97,10 @@ const props = defineProps({
     },
 });
 
-// Parse the JSON content to get message components
 const messageComponents = computed(() => {
     try {
         return JSON.parse(props.message.content);
     } catch (error) {
-        // Fallback to regular message content if not JSON
         return {
             breakpoints: [],
             currentStatus: "",
@@ -133,7 +114,7 @@ const messageComponents = computed(() => {
 </script>
 
 <style scoped>
-.mock-message-component {
+.structured-message {
     @apply space-y-4;
 }
 
@@ -177,4 +158,5 @@ const messageComponents = computed(() => {
     @apply text-xs font-medium;
 }
 </style>
+
 

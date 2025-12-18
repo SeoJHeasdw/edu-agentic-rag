@@ -1,6 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router";
 import ChatView from "@/views/ChatView.vue";
-import MockChatView from "@/views/MockChatView.vue";
 
 const routes = [
     {
@@ -12,11 +11,6 @@ const routes = [
         path: "/chat",
         name: "chat",
         component: ChatView,
-    },
-    {
-        path: "/demo-chat",
-        name: "demo-chat",
-        component: MockChatView,
     },
 ];
 

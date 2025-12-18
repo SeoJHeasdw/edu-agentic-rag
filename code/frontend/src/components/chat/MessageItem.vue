@@ -53,11 +53,8 @@
                         </span>
                     </div>
 
-                    <!-- Mock Message Component (for JSON content) -->
-                    <MockMessageComponent
-                        v-if="isMockMessage"
-                        :message="message"
-                    />
+                    <!-- Structured Message Component (for JSON content, To-Do UI) -->
+                    <StructuredMessage v-if="isMockMessage" :message="message" />
 
                     <!-- Regular Message Content -->
                     <template v-else>
@@ -106,7 +103,7 @@
 <script setup>
 import { computed } from "vue";
 import { parseMarkdown } from "@/utils/markdown";
-import MockMessageComponent from "./MockMessageComponent.vue";
+import StructuredMessage from "./StructuredMessage.vue";
 
 const props = defineProps({
     message: {
