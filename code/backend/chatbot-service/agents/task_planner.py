@@ -18,7 +18,6 @@ class TaskPlannerAgent:
         apis: List[str] = list(analysis.get("apis") or [])
 
         tasks: List[str] = []
-        tasks.append("사용자 요청의 의도를 확인한다")
 
         # Multi-tool / composite heuristic
         is_multi = ("그리고" in user_input) or ("한 다음" in user_input) or ("후에" in user_input)

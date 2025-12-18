@@ -23,7 +23,32 @@ class IndexRequest(BaseModel):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "collection": qdrant.collection, "qdrant_host": qdrant.host, "qdrant_port": qdrant.port}
+    """
+    Healthcheck that verifies Qdrant connectivity.
+    """
+    try:
+        # This will fail fast if Qdrant is not reachable
+        qdrant.client().get_collections()
+        return {
+            "status": "ok",
+            "qdrant_ok": True,
+            "collection": qdrant.collection,
+            "qdrant_host": qdrant.host,
+            "qdrant_port": qdrant.port,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "status": "degraded",
+                "qdrant_ok": False,
+                "collection": qdrant.collection,
+                "qdrant_host": qdrant.host,
+                "qdrant_port": qdrant.port,
+                "error": str(e),
+                "hint": "Qdrant is not reachable. Start Qdrant (default http://localhost:6333) and retry.",
+            },
+        )
 
 
 @app.post("/rag/query")
@@ -46,7 +71,25 @@ async def rag_query(req: QueryRequest):
             )
         return {"query": req.query, "hits": out}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        msg = str(e)
+        # Common local-dev failure modes
+        if "Connection refused" in msg or "Failed to establish a new connection" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": f"Qdrant is not running or not reachable at {qdrant.host}:{qdrant.port}. Start Qdrant and retry.",
+                },
+            )
+        if "No embedding provider configured" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": "Embeddings are not configured. Set OPENAI_API_KEY (or AZURE_OPENAI_* + AZURE_EMBEDDING_DEPLOYMENT_NAME) and retry.",
+                },
+            )
+        raise HTTPException(status_code=500, detail=msg)
 
 
 @app.post("/rag/index/docs")
@@ -76,7 +119,27 @@ async def index_docs(req: IndexRequest):
     if not chunks:
         return {"indexed_files": 0, "indexed_chunks": 0}
 
-    qdrant.upsert_chunks(chunks)
-    return {"indexed_files": len(files), "indexed_chunks": len(chunks), "collection": qdrant.collection}
+    try:
+        qdrant.upsert_chunks(chunks)
+        return {"indexed_files": len(files), "indexed_chunks": len(chunks), "collection": qdrant.collection}
+    except Exception as e:
+        msg = str(e)
+        if "Connection refused" in msg or "Failed to establish a new connection" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": f"Qdrant is not running or not reachable at {qdrant.host}:{qdrant.port}. Start Qdrant and retry.",
+                },
+            )
+        if "No embedding provider configured" in msg:
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": "Embeddings are not configured. Set OPENAI_API_KEY (or AZURE_OPENAI_* + AZURE_EMBEDDING_DEPLOYMENT_NAME) and retry.",
+                },
+            )
+        raise HTTPException(status_code=500, detail=msg)
 
 

@@ -42,6 +42,17 @@ def check_port_available(port: int) -> bool:
         return False
 
 
+def check_port_listening(host: str, port: int, timeout_s: float = 0.25) -> bool:
+    """
+    Returns True if something is listening on host:port.
+    """
+    try:
+        with socket.create_connection((host, port), timeout=timeout_s):
+            return True
+    except OSError:
+        return False
+
+
 def start_service(backend_dir: Path, svc: dict) -> subprocess.Popen[str] | None:
     name = svc["name"]
     port = svc["port"]
@@ -104,6 +115,15 @@ def start_service(backend_dir: Path, svc: dict) -> subprocess.Popen[str] | None:
 
 def main() -> int:
     backend_dir = Path(__file__).resolve().parent
+
+    # RAG prereqs (Qdrant) - we don't start it here, but we warn loudly.
+    # Default config expects Qdrant on localhost:6333.
+    if not check_port_listening("localhost", 6333):
+        print(
+            "⚠️  qdrant is not reachable at localhost:6333. "
+            "rag-service /rag/query will return 503 until Qdrant is started.\n"
+            "   Start Qdrant (Docker): docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant"
+        )
 
     procs: list[tuple[dict, subprocess.Popen[str]]] = []
     for svc in SERVICES:

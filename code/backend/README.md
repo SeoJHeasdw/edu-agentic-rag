@@ -51,6 +51,28 @@ backend/
 
 자세한 내용은 [chatbot-service README](./chatbot-service/README.md)를 참고하세요.
 
+### 2. RAG Service (Qdrant)
+`rag-service`는 벡터 검색을 위해 **Qdrant**가 필요합니다. (기본: `localhost:6333`)
+
+Qdrant 실행(가장 쉬운 방법: Docker):
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+그리고 `rag-service`는 검색/인덱싱 시 임베딩이 필요하므로 다음 중 하나를 설정해야 합니다:
+
+- `OPENAI_API_KEY`
+- 또는 `AZURE_OPENAI_API_KEY` + `AZURE_OPENAI_ENDPOINT` + `AZURE_EMBEDDING_DEPLOYMENT_NAME`
+
+문서 인덱싱(선택, 첫 실행 시 권장):
+
+```bash
+curl -X POST http://localhost:8005/rag/index/docs \
+  -H "Content-Type: application/json" \
+  -d "{}"
+```
+
 ## 향후 추가 예정
 
 - RAG Service (임베딩 및 벡터 검색)
