@@ -1,5 +1,5 @@
 """
-FastAPI application entry point.
+FastAPI 애플리케이션 엔트리포인트.
 """
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,11 +8,11 @@ from api import chat
 
 app = FastAPI(
     title="Edu Agentic RAG Chatbot API",
-    description="Simple chatbot API supporting OpenAI and Azure OpenAI",
+    description="OpenAI / Azure OpenAI를 지원하는 실습용 챗봇 API",
     version="1.0.0"
 )
 
-# CORS middleware
+# CORS 미들웨어
 app.add_middleware(
     CORSMiddleware,
     allow_origins=server_config.cors_origins,
@@ -21,13 +21,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include routers
+# 라우터 등록
 app.include_router(chat.router)
 
 
 @app.get("/")
 async def root():
-    """Root endpoint"""
+    """루트 엔드포인트"""
     return {
         "message": "Edu Agentic RAG Chatbot API",
         "version": "1.0.0",
@@ -37,6 +37,6 @@ async def root():
 
 @app.get("/health")
 async def health():
-    """Health check endpoint"""
+    """헬스 체크 엔드포인트"""
     return {"status": "healthy"}
 

@@ -1,4 +1,4 @@
-# Chatbot Service - Edu Agentic RAG
+# 챗봇 서비스 - Edu Agentic RAG
 
 이 디렉토리는 기본 챗봇 서비스를 제공하는 백엔드 애플리케이션입니다.
 
@@ -34,7 +34,7 @@ chatbot-service/
 ├── agents/                # Agent 구현들 (플랫 구조)
 │   ├── __init__.py
 │   ├── (향후 추가 예정)
-│   │   ├── task_planner.py
+│   │   ├── task_planner_agent.py
 │   │   ├── task_planner_mock.py
 │   │   ├── intent_classifier.py
 │   │   └── intent_classifier_mock.py
@@ -136,7 +136,7 @@ API 문서는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
   }
   ```
 
-- `POST /api/chat/stream` - 스트리밍 채팅 응답 (Server-Sent Events)
+- `POST /api/chat/stream` - 스트리밍 채팅 응답 (SSE: 서버 전송 이벤트)
   
 - `GET /api/chat/health` - 채팅 서비스 상태 확인
 
@@ -144,7 +144,7 @@ API 문서는 `http://localhost:8000/docs`에서 확인할 수 있습니다.
 
 - `GET /` - API 정보
 - `GET /health` - 서버 상태 확인
-- `GET /docs` - Swagger API 문서
+- `GET /docs` - Swagger(API 문서 UI)
 
 ## 설정 파일 (config.yml)
 

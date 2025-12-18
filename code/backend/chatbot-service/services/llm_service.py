@@ -1,5 +1,5 @@
 """
-LLM Service for handling OpenAI and Azure OpenAI API calls.
+LLM 서비스(OpenAI / Azure OpenAI 호출 래퍼).
 """
 from typing import List, Optional
 from openai import OpenAI, AzureOpenAI
@@ -8,7 +8,7 @@ from models import ChatMessage
 
 
 class LLMService:
-    """Service for interacting with LLM providers"""
+    """LLM 제공자(OpenAI/Azure OpenAI)와 통신하는 서비스"""
     
     def __init__(self):
         self.provider = llm_config.provider
@@ -17,7 +17,7 @@ class LLMService:
         self._initialize_client()
     
     def _initialize_client(self):
-        """Initialize the appropriate LLM client based on provider"""
+        """provider 설정에 따라 적절한 LLM 클라이언트를 초기화합니다."""
         if self.provider == "mock":
             self._client = None
             self._initialized = True
@@ -62,24 +62,24 @@ class LLMService:
         conversation_history: Optional[List[ChatMessage]] = None
     ) -> str:
         """
-        Send a chat message to the LLM and get a response.
-        
+        LLM에 메시지를 보내고 응답을 받습니다.
+
         Args:
-            message: The user's message
-            conversation_history: Previous messages in the conversation
-            
+            message: 사용자 메시지
+            conversation_history: 이전 대화 히스토리(선택)
+
         Returns:
-            The assistant's response
+            어시스턴트 응답 텍스트
         """
         if not self._initialized:
             self._initialize_client()
         if self.provider == "mock":
             return "현재 LLM이 설정되지 않아(mock) 마이크로서비스 오케스트레이터로 처리합니다."
 
-        # Build messages list
+        # OpenAI SDK 포맷으로 messages 구성
         messages = []
         
-        # Add conversation history if provided
+        # 대화 히스토리(있으면) 추가
         if conversation_history:
             for msg in conversation_history:
                 messages.append({
@@ -87,13 +87,13 @@ class LLMService:
                     "content": msg.content
                 })
         
-        # Add current user message
+        # 현재 사용자 메시지 추가
         messages.append({
             "role": "user",
             "content": message
         })
         
-        # Call the appropriate API
+        # provider에 맞는 API 호출
         if self.provider == "azure_openai":
             response = self._client.chat.completions.create(
                 model=self._deployment_name,
@@ -117,14 +117,14 @@ class LLMService:
         conversation_history: Optional[List[ChatMessage]] = None
     ):
         """
-        Stream a chat response from the LLM.
-        
+        LLM 응답을 스트리밍으로 반환합니다.
+
         Args:
-            message: The user's message
-            conversation_history: Previous messages in the conversation
-            
+            message: 사용자 메시지
+            conversation_history: 이전 대화 히스토리(선택)
+
         Yields:
-            Chunks of the assistant's response
+            응답 텍스트 조각(chunk)
         """
         if not self._initialized:
             self._initialize_client()
@@ -134,10 +134,10 @@ class LLMService:
                 yield text[i : i + 32]
             return
 
-        # Build messages list
+        # OpenAI SDK 포맷으로 messages 구성
         messages = []
         
-        # Add conversation history if provided
+        # 대화 히스토리(있으면) 추가
         if conversation_history:
             for msg in conversation_history:
                 messages.append({
@@ -145,13 +145,13 @@ class LLMService:
                     "content": msg.content
                 })
         
-        # Add current user message
+        # 현재 사용자 메시지 추가
         messages.append({
             "role": "user",
             "content": message
         })
         
-        # Call the appropriate API with streaming
+        # provider에 맞는 API 호출(stream=True)
         if self.provider == "azure_openai":
             stream = self._client.chat.completions.create(
                 model=self._deployment_name,
@@ -174,6 +174,6 @@ class LLMService:
                 yield chunk.choices[0].delta.content
 
 
-# Global service instance
+# 전역 서비스 인스턴스
 llm_service = LLMService()
 

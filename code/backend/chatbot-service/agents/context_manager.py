@@ -1,7 +1,8 @@
 """
-Conversation context manager (lab-friendly, no external dependencies).
+대화 컨텍스트 매니저 (실습용: 외부 의존성 없이 동작).
 
-Moved from backend/agents/context_manager.py to keep orchestrator-specific agents under chatbot-service.
+`backend/agents/context_manager.py`에서 이동:
+- `chatbot-service` 내부에서 오케스트레이션/에이전트 실습을 자급자족 형태로 유지하기 위함
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from typing import Any, Deque, Dict, List, Optional
 import threading
 import time
 import uuid
+import json
 
 
 @dataclass
@@ -156,6 +158,61 @@ class ContextManager:
         with self._lock:
             session = self.active_sessions.get(session_id)
             return asdict(session) if session else {}
+
+    # ---- Tool-result cache (session-scoped) ----
+    def _ensure_tool_cache(self, session_id: str) -> Dict[str, Any]:
+        """
+        Session-scoped cache for tool results.
+        Structure: session.session_metadata["tool_cache"][cache_key] = {"ts": float, "value": Any}
+        """
+        with self._lock:
+            session = self.active_sessions.get(session_id)
+            if not session:
+                # create minimal session if missing
+                self.active_sessions[session_id] = SessionContext(
+                    session_id=session_id,
+                    user_id=None,
+                    created_at=datetime.now().isoformat(),
+                    last_activity=datetime.now().isoformat(),
+                    conversation_turns=[],
+                    user_preferences={},
+                    active_topics=[],
+                    session_metadata={},
+                )
+                self.context_windows[session_id] = deque(maxlen=self.max_history_length)
+                session = self.active_sessions[session_id]
+
+            session.session_metadata = session.session_metadata or {}
+            tool_cache = session.session_metadata.get("tool_cache")
+            if not isinstance(tool_cache, dict):
+                tool_cache = {}
+                session.session_metadata["tool_cache"] = tool_cache
+            return tool_cache
+
+    def make_cache_key(self, tool_name: str, args: Dict[str, Any]) -> str:
+        try:
+            args_s = json.dumps(args or {}, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        except Exception:
+            args_s = str(args)
+        return f"{tool_name}:{args_s}"
+
+    def get_cached_tool_result(self, session_id: str, cache_key: str, ttl_seconds: Optional[float] = None) -> Optional[Any]:
+        with self._lock:
+            tool_cache = self._ensure_tool_cache(session_id)
+            entry = tool_cache.get(cache_key)
+            if not isinstance(entry, dict):
+                return None
+            ts = entry.get("ts")
+            if not isinstance(ts, (int, float)):
+                return None
+            if ttl_seconds is not None and (time.time() - float(ts)) > float(ttl_seconds):
+                return None
+            return entry.get("value")
+
+    def set_cached_tool_result(self, session_id: str, cache_key: str, value: Any) -> None:
+        with self._lock:
+            tool_cache = self._ensure_tool_cache(session_id)
+            tool_cache[cache_key] = {"ts": time.time(), "value": value}
 
     def cleanup_expired_sessions(self) -> None:
         with self._lock:

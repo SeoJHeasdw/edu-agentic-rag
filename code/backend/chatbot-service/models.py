@@ -1,25 +1,25 @@
 """
-Chat models for request/response schemas.
+채팅 API 요청/응답 스키마(Pydantic 모델).
 """
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
 
 class ChatMessage(BaseModel):
-    """Single chat message"""
-    role: str  # "user" or "assistant"
+    """단일 채팅 메시지"""
+    role: str  # "user" | "assistant"
     content: str
 
 
 class ChatRequest(BaseModel):
-    """Chat request from frontend"""
+    """프론트엔드 → 백엔드 요청"""
     message: str
     conversation_id: Optional[str] = None
-    messages: Optional[List[ChatMessage]] = None  # Conversation history
+    messages: Optional[List[ChatMessage]] = None  # 대화 히스토리
 
 
 class ChatResponse(BaseModel):
-    """Chat response to frontend"""
+    """백엔드 → 프론트엔드 응답"""
     message: str
     conversation_id: Optional[str] = None
     role: str = "assistant"
