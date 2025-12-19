@@ -1424,30 +1424,6 @@ tools = [
 ]
 ```
 
-#### 에이전트의 의사결정 흐름 (ReAct 패턴)
-
-**ReAct = Reasoning (추론) + Acting (행동)**
-
-```
-사용자: "우리 회사 직원 수와 애플의 직원 수를 비교해줘."
-
-[Cycle 1]
-Thought: "두 가지 정보가 필요해. 하나는 내부 정보, 하나는 외부 정보."
-Action: company_knowledge_search("우리 회사 직원 수")
-Observation: "2024년 기준 3,500명"
-
-[Cycle 2]
-Thought: "애플 직원 수는 내부 DB에 없을 거야. 웹 검색을 써야겠어."
-Action: web_search("Apple Inc 직원 수 2024")
-Observation: "애플은 약 164,000명의 직원 보유 (2024)"
-
-[Cycle 3]
-Thought: "두 정보를 모두 수집했으니 이제 답변을 만들자."
-Action: Final Answer
-Output: "우리 회사는 3,500명, 애플은 164,000명의 직원을 보유하고 있습니다.
-         애플이 약 47배 더 많은 직원을 보유하고 있습니다."
-```
-
 **ReAct 프롬프트 예시 (LangChain)**
 
 ```python
