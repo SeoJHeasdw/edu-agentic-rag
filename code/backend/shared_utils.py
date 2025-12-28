@@ -80,13 +80,31 @@ class TextUtils:
 class EmbeddingUtils:
     @staticmethod
     def _client():
-        # Use OpenAI if key is set; otherwise use Azure embeddings if configured.
-        if OPENAI_API_KEY:
-            # Disable SSL verify optionally for corp env (kept minimal)
+        """
+        Returns (provider, client) for embeddings.
+
+        Teaching-friendly behavior:
+        - If you pick OpenAI, we ONLY use OpenAI (no fallback).
+        - If you pick Azure, we ONLY use Azure (no fallback).
+
+        Control via env:
+        - EMBEDDINGS_PROVIDER=openai|azure|auto (default: auto)
+          - auto keeps prior behavior: OpenAI if OPENAI_API_KEY exists, else Azure if configured
+        """
+        pref = (os.getenv("EMBEDDINGS_PROVIDER", "auto") or "auto").strip().lower()
+
+        def openai_client():
+            if not OPENAI_API_KEY:
+                raise RuntimeError("OPENAI_API_KEY is not set (required for EMBEDDINGS_PROVIDER=openai).")
             no_ssl = httpx.Client(verify=bool(os.getenv("SSL_VERIFY", "true").lower() == "true"))
             return ("openai", OpenAI(api_key=OPENAI_API_KEY, http_client=no_ssl))
 
-        if AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT and AZURE_EMBEDDING_DEPLOYMENT_NAME:
+        def azure_client():
+            if not (AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT and AZURE_EMBEDDING_DEPLOYMENT_NAME):
+                raise RuntimeError(
+                    "Azure embeddings are not configured (required for EMBEDDINGS_PROVIDER=azure). "
+                    "Need AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + AZURE_EMBEDDING_DEPLOYMENT_NAME."
+                )
             return (
                 "azure",
                 AzureOpenAI(
@@ -96,7 +114,20 @@ class EmbeddingUtils:
                 ),
             )
 
-        raise RuntimeError("No embedding provider configured. Set OPENAI_API_KEY or Azure embedding env vars.")
+        if pref == "openai":
+            return openai_client()
+        if pref == "azure":
+            return azure_client()
+
+        # auto
+        if OPENAI_API_KEY:
+            return openai_client()
+        if AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT and AZURE_EMBEDDING_DEPLOYMENT_NAME:
+            return azure_client()
+        raise RuntimeError(
+            "No embedding provider configured. Set OPENAI_API_KEY or Azure embedding env vars "
+            "(AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT + AZURE_EMBEDDING_DEPLOYMENT_NAME)."
+        )
 
     @staticmethod
     def embed(texts: List[str]) -> List[List[float]]:

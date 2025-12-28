@@ -2,7 +2,7 @@
 # Secrets should live in code/backend/.env (NOT committed)
 
 llm:
-  provider: "azure_openai"  # "mock" | "openai" | "azure_openai"
+  provider: "openai"  # "mock" | "openai" | "azure_openai"
 
   openai:
     model: "gpt-4o-mini"

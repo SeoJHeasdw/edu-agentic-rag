@@ -146,6 +146,7 @@ async def health():
             (os.getenv("AZURE_EMBEDDING_DEPLOYMENT_NAME", "").strip() or os.getenv("AZURE_EMBEDDING_DEPLOYMENT", "").strip())
         )
         has_azure = bool(has_azure_api_key and has_azure_endpoint and has_azure_embedding_deployment)
+        embeddings_provider = (os.getenv("EMBEDDINGS_PROVIDER", "auto") or "auto").strip().lower()
         # Surface config (no secrets) to make debugging easy
         try:
             from shared_config import EMBEDDING_DIMENSION, EMBEDDING_MODEL, AZURE_EMBEDDING_DEPLOYMENT_NAME, QDRANT_COLLECTION
@@ -161,6 +162,7 @@ async def health():
             "qdrant_host": qdrant.host,
             "qdrant_port": qdrant.port,
             "embeddings_configured": bool(has_openai_key or has_azure),
+            "embeddings_provider": embeddings_provider,
             "embeddings_config": {
                 "has_openai_key": has_openai_key,
                 "has_azure_api_key": has_azure_api_key,

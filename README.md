@@ -46,6 +46,37 @@ edu-agentic-rag/
 
 ## 🚀 빠른 시작
 
+## ✅ 사전 준비 (필수 설치/설정)
+
+이 레포는 **Agentic RAG 구축 실습을 위한 교육자료(이론 + 프론트 + 백엔드)** 입니다. 실행 전에 아래 항목을 준비해주세요.
+
+### 1) Python 설치 (백엔드)
+
+- **Python 3.11 ~ 3.13** 권장 (예: 3.11)
+
+### 2) Node.js 설치 (프론트엔드)
+
+- 프론트 실행을 위해 **Node.js (권장 18+ / 20+)** 가 필요합니다. (`npm` 포함)
+
+### 3) Qdrant 설치/실행 (Vector DB)
+
+백엔드 RAG 서비스는 기본적으로 Qdrant에 연결합니다. 로컬에서는 Docker로 가장 쉽게 실행할 수 있습니다:
+
+```bash
+docker run -p 6333:6333 -p 6334:6334 qdrant/qdrant
+```
+
+기본 연결 주소는 `http://localhost:6333` 입니다. (환경변수 `QDRANT_HOST`, `QDRANT_PORT`로 변경 가능)
+
+### 4) OpenAI API Key 발급/설정 (임베딩/LLM)
+
+- OpenAI를 사용할 경우, **API Key 발급**: [OpenAI API Keys](https://platform.openai.com/api-keys)
+- 백엔드 폴더(`code/backend/`)에 `.env` 파일을 만들고 아래처럼 설정합니다:
+  - `OPENAI_API_KEY=...`
+
+> 참고: Azure OpenAI를 쓰는 경우 `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_API_VERSION`, `AZURE_OPENAI_DEPLOYMENT_NAME` 등을 설정할 수 있습니다.
+> 또한 **API Key가 없으면 챗봇 서비스는 자동으로 `mock` 모드로 동작**(UI/흐름 데모 가능)하지만, **RAG 인덱싱/검색은 임베딩 설정(예: `OPENAI_API_KEY`)이 필요**합니다.
+
 ### 전체 시스템 실행 (로컬)
 
 백엔드는 Python 런처로 한 번에 띄울 수 있습니다:
@@ -73,23 +104,24 @@ npm run dev
 
 ```bash
 cd code/backend/
-config.yml설정:
-llm:
-  provider: "azure_openai"  # "mock" | "openai" | "azure_openai"
+
+# (선택) config.yml 설정 예시:
+# llm:
+#   provider: "azure_openai"  # "mock" | "openai" | "azure_openai"
 
 # 라이브러리 설치(통합)
 cd code/backend/
 pip install -r shared_requirements.txt
 
 # 환경 변수 설정 (.env 파일 생성)
-cp .env.example .env
-# .env 파일을 편집하여 API 키 설정
+cp .env.example .env  # 예시 파일이 있는 경우
+# 또는 직접 code/backend/.env 생성 후 API 키 설정
 
 # 모든 서비스 실행
 python start_services.py
 ```
 
-자세한 내용은 [code/backend README](code/backend/cREADME.md)를 참고하세요.
+자세한 내용은 [code/backend README](code/backend/README.md)를 참고하세요.
 
 ## 📖 학습 경로
 
