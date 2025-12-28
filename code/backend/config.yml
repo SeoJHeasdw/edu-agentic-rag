@@ -5,7 +5,7 @@ llm:
   provider: "openai"  # "mock" | "openai" | "azure_openai"
 
   openai:
-    model: "gpt-5.2"
+    model: "gpt-4o-mini"
     base_url: "https://api.openai.com/v1"
     temperature: 0.7
     max_tokens: 2000
