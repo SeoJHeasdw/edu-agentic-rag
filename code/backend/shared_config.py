@@ -48,7 +48,7 @@ AZURE_EMBEDDING_DEPLOYMENT_NAME = (
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 QDRANT_GRPC_PORT = int(os.getenv("QDRANT_GRPC_PORT", "6334"))
-QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu_agentic_rag")
+QDRANT_COLLECTION = os.getenv("QDRANT_COLLECTION", "edu-agentic-rag")
 
 # Chunking defaults
 DEFAULT_CHUNK_SIZE = int(os.getenv("DEFAULT_CHUNK_SIZE", "900"))

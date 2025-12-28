@@ -171,10 +171,30 @@ class QdrantUtils:
                 # Surface a clear error to callers (index/query) instead of a raw Qdrant 400.
                 raise RuntimeError(str(e))
             return
-        c.create_collection(
-            collection_name=self.collection,
-            vectors_config=qmodels.VectorParams(size=self.vector_size, distance=qmodels.Distance.COSINE),
-        )
+        try:
+            c.create_collection(
+                collection_name=self.collection,
+                vectors_config=qmodels.VectorParams(size=self.vector_size, distance=qmodels.Distance.COSINE),
+            )
+        except Exception as e:
+            msg = str(e)
+            # Common Docker Desktop / bind-mount failure modes end up as filesystem errors inside Qdrant.
+            # When storage is not writable/readable, Qdrant may leave behind partial folders which then cause:
+            # - "Can't create directory for collection ... File exists"
+            # - "Operation not permitted" touching ./storage/collections/...
+            if (
+                "Can't create directory for collection" in msg
+                or ("./storage/collections" in msg and ("Operation not permitted" in msg or "os error 1" in msg))
+            ):
+                raise RuntimeError(
+                    f"{msg}\n"
+                    "Hint: Qdrant storage is not writable/readable. If you're using Docker on macOS, avoid mounting "
+                    "Qdrant storage under Desktop/Documents unless Docker Desktop has permission. Recommended:\n"
+                    "  mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage\n"
+                    "  docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 "
+                    "-v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage qdrant/qdrant"
+                ) from e
+            raise
 
     def count_points(self) -> int:
         """

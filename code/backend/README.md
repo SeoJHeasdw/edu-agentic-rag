@@ -121,6 +121,18 @@ curl -X POST http://localhost:8005/rag/index/docs \
   - `start_services.py`는 해당 포트가 점유되어 있으면 그 서비스를 “skipping” 합니다.
   - 기존에 떠 있는 프로세스를 종료하거나, 서비스 포트를 바꾸고 싶으면 `start_services.py`의 `SERVICES` 목록을 조정하세요.
 
+- **Qdrant가 500/503을 반환하며 `Operation not permitted` 또는 `Can't create directory ... File exists`가 뜸**
+  - Docker Desktop이 **Qdrant 저장소 볼륨 경로를 읽기/쓰기 못하는 경우**(특히 macOS에서 Desktop/Documents 아래를 마운트했는데 권한이 없을 때) 자주 발생합니다.
+  - ✅ 해결: 저장소 볼륨을 `~/.local/share/...` 같은 안정적인 경로로 옮기고 Qdrant를 재시작하세요:
+
+```bash
+docker rm -f qdrant || true
+mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage
+docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 \
+  -v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage \
+  qdrant/qdrant
+```
+
 - **`rag-service`가 503을 반환함**
   - 보통 **Qdrant 미기동**(기본 `localhost:6333`) 또는 **임베딩 키 미설정**입니다.
   - Qdrant 실행 후(`docker run ...`) 다시 시도하거나, `.env`에 `OPENAI_API_KEY` 또는 `AZURE_OPENAI_* + AZURE_EMBEDDING_DEPLOYMENT_NAME`를 설정하세요.

@@ -272,6 +272,21 @@ async def index_docs(req: IndexRequest):
         return resp
     except Exception as e:
         msg = str(e)
+        if "Can't create directory for collection" in msg or ("./storage/collections" in msg and ("Operation not permitted" in msg or "os error 1" in msg)):
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": (
+                        "Qdrant storage is not writable/readable. If you're using Docker Desktop on macOS, "
+                        "avoid mounting Qdrant storage under Desktop/Documents unless Docker Desktop has permission. "
+                        "Recommended:\n"
+                        "  mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage\n"
+                        "  docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 "
+                        "-v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage qdrant/qdrant"
+                    ),
+                },
+            )
         if "Connection refused" in msg or "Failed to establish a new connection" in msg:
             raise HTTPException(
                 status_code=503,
@@ -330,6 +345,21 @@ async def index_qdrant_embedding_docs(req: IndexRequest):
         return resp
     except Exception as e:
         msg = str(e)
+        if "Can't create directory for collection" in msg or ("./storage/collections" in msg and ("Operation not permitted" in msg or "os error 1" in msg)):
+            raise HTTPException(
+                status_code=503,
+                detail={
+                    "error": msg,
+                    "hint": (
+                        "Qdrant storage is not writable/readable. If you're using Docker Desktop on macOS, "
+                        "avoid mounting Qdrant storage under Desktop/Documents unless Docker Desktop has permission. "
+                        "Recommended:\n"
+                        "  mkdir -p ~/.local/share/edu-agentic-rag/qdrant_storage\n"
+                        "  docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 "
+                        "-v ~/.local/share/edu-agentic-rag/qdrant_storage:/qdrant/storage qdrant/qdrant"
+                    ),
+                },
+            )
         if "Connection refused" in msg or "Failed to establish a new connection" in msg:
             raise HTTPException(
                 status_code=503,
