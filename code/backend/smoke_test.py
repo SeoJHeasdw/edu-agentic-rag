@@ -1,15 +1,15 @@
 """
 Backend smoke test (local).
 
-Runs a small set of HTTP checks against the local microservices started by:
+다음 명령으로 시작된 로컬 마이크로서비스에 대해 간단한 HTTP 검사를 실행합니다.
   cd code/backend && python start_services.py
 
-Why this exists:
-- Avoid "it seems to work" by having a repeatable, automated sanity check.
-- Verifies both individual services and one integration flow:
-  chatbot-service -> weather-service -> notification-service
+이 테스트의 목적:
+- 반복 가능하고 자동화된 기본 기능 검사를 통해 "작동하는 것 같다"는 막연한 판단을 방지합니다.
+- 개별 서비스와 하나의 통합 흐름
+  (챗봇 서비스 -> 날씨 서비스 -> 알림 서비스)을 모두 검증합니다.
 
-Usage:
+사용법:
   python smoke_test.py
   python smoke_test.py --base http://localhost
 """
