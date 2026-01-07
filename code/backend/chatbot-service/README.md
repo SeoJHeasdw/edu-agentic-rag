@@ -45,20 +45,7 @@ chatbot-service/
 
 ## 설치 및 실행
 
-### 1. 가상 환경 생성
-
-```bash
-python -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-```
-
-### 2. 의존성 설치
-
-```bash
-pip install -r requirements.txt
-```
-
-### 3. 환경 변수 설정
+### 1. 환경 변수 설정
 
 이 프로젝트는 **backend 공용 `.env`**를 사용합니다:
 
