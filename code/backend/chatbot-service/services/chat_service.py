@@ -577,8 +577,16 @@ class ChatService:
         out = (answer or "").strip()
 
         sources = self._agentic_extract_sources_from_observations(observations)
-        if sources and ("근거" not in out and "출처" not in out):
-            out += "\n\n근거(출처)\n" + "\n".join([f"- {s}" for s in sources[:3]])
+        if sources:
+            # LLM이 "근거(출처)" 섹션을 만들어놓고 실제 파일명을 누락하는 케이스가 있어,
+            # source 문자열이 본문에 없으면 후처리에서 반드시 보강합니다.
+            to_add = [s for s in sources if s and s not in out][:3]
+            if to_add:
+                bullets = "\n".join([f"- {s}" for s in to_add])
+                if "근거(출처)" in out or ("근거" in out and "출처" in out):
+                    out += "\n" + bullets
+                else:
+                    out += "\n\n근거(출처)\n" + bullets
 
         notif = self._agentic_extract_notification_summary(observations)
         # Always show notification outcome if we actually executed notification.send.

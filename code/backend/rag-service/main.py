@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 import os
 import threading
 import hashlib
+import uuid
 
 from shared_utils import iter_docs_files
 from bm25 import BM25Document, BM25Index
@@ -53,15 +54,18 @@ def _normalize_source(p: Path) -> str:
         return str(p)
 
 
-def _stable_chunk_id(*, docset: str, source: str, heading_path: str, chunk_index: int) -> str:
+def _stable_chunk_ids(*, docset: str, source: str, heading_path: str, chunk_index: int) -> tuple[str, str]:
     """
-    재인덱싱 시 중복이 쌓이지 않도록 결정적(deterministic) 청크 ID를 생성합니다.
-    - 같은 입력(docset/source/heading_path/순번) -> 항상 같은 id
+    재인덱싱 시 중복이 쌓이지 않도록 결정적(deterministic) 청크 ID들을 생성합니다.
+    - point_id: Qdrant point id로 사용(반드시 UUID 또는 unsigned int여야 함)
+    - chunk_id: 사람이 읽기 좋은 레거시 청크 키(디버깅/표시용)
     """
 
     base = f"{docset}|{source}|{heading_path}|{int(chunk_index)}"
+    point_id = str(uuid.uuid5(uuid.NAMESPACE_URL, base))
     digest = hashlib.sha1(base.encode("utf-8")).hexdigest()[:24]  # 너무 길지 않게 축약
-    return f"ch_{digest}"
+    chunk_id = f"ch_{digest}"
+    return point_id, chunk_id
 
 
 def _build_chunks(*, docs_root: Path, max_files: int, docset: str) -> tuple[list[dict[str, Any]], list[Path]]:
@@ -80,12 +84,13 @@ def _build_chunks(*, docs_root: Path, max_files: int, docset: str) -> tuple[list
             )
             for idx, ch in enumerate(md_chunks):
                 heading_path = str((ch.meta or {}).get("heading_path") or "")
+                pid, chunk_id = _stable_chunk_ids(docset=docset, source=source, heading_path=heading_path, chunk_index=idx)
                 chunks.append(
                     {
-                        "id": _stable_chunk_id(docset=docset, source=source, heading_path=heading_path, chunk_index=idx),
+                        "id": pid,
                         "text": ch.text,
                         "source": source,
-                        "meta": {"docset": docset, "chunk_index": idx, **(ch.meta or {})},
+                        "meta": {"docset": docset, "chunk_index": idx, "chunk_id": chunk_id, **(ch.meta or {})},
                     }
                 )
             continue
@@ -97,12 +102,13 @@ def _build_chunks(*, docs_root: Path, max_files: int, docset: str) -> tuple[list
             overlap=int(os.getenv("DEFAULT_CHUNK_OVERLAP", "120")),
         )
         for idx, ch in enumerate(fb):
+            pid, chunk_id = _stable_chunk_ids(docset=docset, source=source, heading_path="", chunk_index=idx)
             chunks.append(
                 {
-                    "id": _stable_chunk_id(docset=docset, source=source, heading_path="", chunk_index=idx),
+                    "id": pid,
                     "text": ch.text,
                     "source": source,
-                    "meta": {"docset": docset, "chunk_index": idx, **(ch.meta or {})},
+                    "meta": {"docset": docset, "chunk_index": idx, "chunk_id": chunk_id, **(ch.meta or {})},
                 }
             )
     return chunks, files
