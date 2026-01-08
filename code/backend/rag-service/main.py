@@ -613,7 +613,7 @@ async def index_qdrant_embedding_docs(req: IndexRequest):
     """
     레포 전용 편의 엔드포인트:
     - repo 루트의 `qdrant_embedding_docs/` 를 Qdrant에 인덱싱합니다.
-    - 프론트엔드는 로컬 파일 경로를 직접 보내는 대신 이 엔드포인트를 호출하세요.
+    - 프론트엔드는 로컬 파일 경로를 직접 보내는 대신 이 엔드포인트를 호출
     """
     repo_root = _repo_root()
     docs_root = repo_root / "qdrant_embedding_docs"
