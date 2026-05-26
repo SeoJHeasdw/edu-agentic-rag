@@ -159,11 +159,6 @@ def start_service(backend_dir: Path, svc: dict) -> ServiceStartResult:
             print(f"⚠️  {name}: port {port} is still in use, skipping ({detail})")
             return ServiceStartResult(svc=svc, proc=None, status="skipped_port_in_use", detail=detail)
 
-    env = dict(**{**dict(**(dict())), **dict()})
-    env.update(dict(**(dict())))
-    env.update(dict(**(dict())))
-    env.update(dict(**(dict())))
-
     # Base env + PYTHONPATH:
     # - keeps backend root importable (shared_config/shared_utils)
     # - each service can stay self-contained within its directory

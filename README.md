@@ -19,7 +19,8 @@ Agentic RAG(Retrieval-Augmented Generation)에 대한 이론과 실습을 통합
 edu-agentic-rag/
 ├── README.md                     # 프로젝트 전체 소개 및 실행 가이드
 ├── docs/                         # 이론 자료
-│   └── Agentic_RAG_Basic.md
+│   ├── Agentic_RAG_Basic.md      # LLM 한계 → RAG → Agentic RAG → 실전 구현
+│   └── On_Prem_LLM_Serving.md    # On-Prem LLM 서빙 실전 가이드 (하드웨어/모델 성능)
 ├── code/                         # 실습 코드 모음
 │   ├── frontend/                 # 프론트엔드 소스 (Vue 3)
 │   │   ├── src/
@@ -126,11 +127,10 @@ python start_services.py
 ## 📖 학습 경로
 
 ### 1단계: 이론 학습
-`docs/` 디렉토리의 이론 자료를 순서대로 학습합니다:
+`docs/` 디렉토리의 이론 자료를 학습합니다:
 
-1. **01_intro.md** - Agentic RAG 소개
-2. **02_rag_concept.md** - RAG 개념 이해
-3. (추가 이론 자료...)
+1. **[Agentic_RAG_Basic.md](docs/Agentic_RAG_Basic.md)** - LLM 한계 → RAG 기초 → Agentic RAG → 실전 구현 → 최적화까지 순서대로 구성
+2. **[On_Prem_LLM_Serving.md](docs/On_Prem_LLM_Serving.md)** - On-Premise 환경에서 LLM을 직접 서빙한 실전 경험 정리 (하드웨어 요구사항, 모델별 Agentic RAG 성능 비교, On-Prem의 현실)
 
 ### 2단계: 실습 코드 분석
 `code/` 디렉토리의 실습 코드를 분석하고 실행해봅니다:
@@ -204,3 +204,5 @@ python start_services.py
 ---
 
 **시작하기**: [프론트엔드 README](code/frontend/README.md)를 확인하여 첫 번째 실습을 시작하세요!
+
+> **실무 심화 자료**: Agentic RAG를 Cloud가 아닌 On-Premise 환경에서 구현해야 한다면? 직접 서빙해본 경험을 바탕으로 하드웨어 요구사항, 모델별 실전 성능, On-Prem Agent의 현실을 정리했습니다 → **[On_Prem_LLM_Serving.md](docs/On_Prem_LLM_Serving.md)**
