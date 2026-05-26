@@ -2153,6 +2153,10 @@ async def execute_plan(self, *, tasks: List[Dict], ...):
 
 앞서 분석한 에이전트들이 실제로 어떻게 협력하는지 구체적인 요청을 통해 따라가 보겠습니다.
 
+![Multi-Agent 실행 아키텍처](asset/architecture.png)
+
+> 실선(①②③④) = 메인 실행 흐름 / 점선 = LLM 호출 및 캐시 조회
+
 **예시 요청**: "Agentic RAG가 뭐야? 강의자료에서 근거를 찾아서 요약하고, 팀에게 슬랙으로 공유해줘"
 
 <a id="sec-4-3-step-1"></a>
